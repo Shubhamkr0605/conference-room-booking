@@ -390,121 +390,296 @@ export async function getAdminDashboard(
    ADMIN REPORTS
 ===================================================== */
 
+/*
+ * Returns the current date in APP_TIMEZONE.
+ *
+ * Example:
+ * 2026-09-21
+ */
+function getReportDateParts() {
+  const { date } =
+    getCurrentDateAndTime();
+
+  return date.split("-").map(Number);
+}
+
+/*
+ * Adds days to a YYYY-MM-DD date.
+ *
+ * We use UTC internally so the calculation does not
+ * accidentally change because of the computer's local
+ * timezone.
+ */
+function addDaysToDateString(
+  dateString: string,
+  days: number
+): string {
+  const [year, month, day] =
+    dateString
+      .split("-")
+      .map(Number);
+
+  const date = new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      day
+    )
+  );
+
+  date.setUTCDate(
+    date.getUTCDate() + days
+  );
+
+  return date
+    .toISOString()
+    .slice(0, 10);
+}
+
+/*
+ * Returns Monday-Sunday week range.
+ */
+function getWeekRange(
+  dateString: string
+) {
+  const [year, month, day] =
+    dateString
+      .split("-")
+      .map(Number);
+
+  const date = new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      day
+    )
+  );
+
+  const dayOfWeek =
+    date.getUTCDay();
+
+  // Monday = 0 ... Sunday = 6
+  const daysFromMonday =
+    dayOfWeek === 0
+      ? 6
+      : dayOfWeek - 1;
+
+  const start =
+    addDaysToDateString(
+      dateString,
+      -daysFromMonday
+    );
+
+  const end =
+    addDaysToDateString(
+      start,
+      6
+    );
+
+  return {
+    start,
+    end,
+  };
+}
+
+/*
+ * Returns first and last day of the current month.
+ */
+function getMonthRange(
+  dateString: string
+) {
+  const [year, month] =
+    dateString
+      .split("-")
+      .map(Number);
+
+  const monthString =
+    String(month).padStart(
+      2,
+      "0"
+    );
+
+  const start =
+    `${year}-${monthString}-01`;
+
+  const lastDay =
+    new Date(
+      Date.UTC(
+        year,
+        month,
+        0
+      )
+    ).getUTCDate();
+
+  const end =
+    `${year}-${monthString}-${String(
+      lastDay
+    ).padStart(2, "0")}`;
+
+  return {
+    start,
+    end,
+  };
+}
+
+/* =====================================================
+   GET ADMIN REPORTS
+===================================================== */
+
 export async function getAdminReports(
   req: AuthenticatedRequest,
   res: Response
 ) {
   try {
-    const period =
-      typeof req.query.period === "string"
+    /* =================================================
+       VALIDATE PERIOD
+    ================================================= */
+
+    const requestedPeriod =
+      typeof req.query.period ===
+      "string"
         ? req.query.period
         : "month";
 
-    const now = new Date();
+    const allowedPeriods = [
+      "today",
+      "week",
+      "month",
+      "all",
+    ] as const;
 
-    const currentYear =
-      now.getFullYear();
+    type ReportPeriod =
+      (typeof allowedPeriods)[number];
 
-    const currentMonth =
-      now.getMonth();
+    if (
+      !allowedPeriods.includes(
+        requestedPeriod as ReportPeriod
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid period. Use today, week, month, or all",
+      });
+    }
 
-    let startDate: Date;
-    let endDate: Date;
+    const period =
+      requestedPeriod as ReportPeriod;
 
     /* =================================================
        DATE RANGE
     ================================================= */
 
+    /*
+     * IMPORTANT:
+     *
+     * Reports are based on the scheduled meeting date:
+     *
+     * booking.date
+     *
+     * NOT booking.createdAt.
+     */
+
+    const [
+      currentYear,
+      currentMonth,
+      currentDay,
+    ] = getReportDateParts();
+
+    const today =
+      `${currentYear}-${String(
+        currentMonth
+      ).padStart(
+        2,
+        "0"
+      )}-${String(
+        currentDay
+      ).padStart(
+        2,
+        "0"
+      )}`;
+
+    let startDate:
+      | string
+      | null = null;
+
+    let endDate:
+      | string
+      | null = null;
+
     switch (period) {
       case "today": {
-        startDate = new Date(
-          currentYear,
-          currentMonth,
-          now.getDate()
-        );
-
-        endDate = new Date(
-          currentYear,
-          currentMonth,
-          now.getDate() + 1
-        );
+        startDate = today;
+        endDate = today;
 
         break;
       }
 
       case "week": {
-        const day =
-          now.getDay();
+        const weekRange =
+          getWeekRange(today);
 
-        const difference =
-          day === 0
-            ? 6
-            : day - 1;
+        startDate =
+          weekRange.start;
 
-        startDate = new Date(
-          currentYear,
-          currentMonth,
-          now.getDate() -
-            difference
-        );
-
-        endDate = new Date(
-          startDate
-        );
-
-        endDate.setDate(
-          endDate.getDate() + 7
-        );
+        endDate =
+          weekRange.end;
 
         break;
       }
 
       case "month": {
-        startDate = new Date(
-          currentYear,
-          currentMonth,
-          1
-        );
+        const monthRange =
+          getMonthRange(today);
 
-        endDate = new Date(
-          currentYear,
-          currentMonth + 1,
-          1
-        );
+        startDate =
+          monthRange.start;
+
+        endDate =
+          monthRange.end;
 
         break;
       }
 
       case "all": {
-        startDate = new Date(0);
-
-        endDate = new Date(
-          8640000000000000
-        );
+        startDate = null;
+        endDate = null;
 
         break;
-      }
-
-      default: {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid period. Use today, week, month, or all",
-        });
       }
     }
 
     /* =================================================
-       BOOKINGS IN SELECTED PERIOD
+       BOOKING QUERY
     ================================================= */
 
+    /*
+     * Booking.date is stored as:
+     *
+     * YYYY-MM-DD
+     *
+     * Therefore a string range is appropriate here.
+     */
+
+    const bookingFilter: Record<
+      string,
+      unknown
+    > = {};
+
+    if (
+      startDate &&
+      endDate
+    ) {
+      bookingFilter.date = {
+        $gte: startDate,
+        $lte: endDate,
+      };
+    }
+
     const bookings =
-      await Booking.find({
-        createdAt: {
-          $gte: startDate,
-          $lt: endDate,
-        },
-      })
+      await Booking.find(
+        bookingFilter
+      )
         .populate(
           "user",
           "name email department"
@@ -514,41 +689,65 @@ export async function getAdminReports(
           "name location capacity"
         )
         .sort({
-          createdAt: -1,
+          date: -1,
+          startTime: -1,
         })
         .lean();
 
     /* =================================================
-       BASIC COUNTS
+       EFFECTIVE STATUS
+    ================================================= */
+
+    /*
+     * CANCELLED remains CANCELLED.
+     *
+     * Otherwise status is calculated using the
+     * actual scheduled date/time.
+     */
+
+    const effectiveStatuses =
+      bookings.map(
+        (booking) =>
+          getEffectiveBookingStatus(
+            booking.date,
+            booking.endTime,
+            booking.status
+          )
+      );
+
+    /* =================================================
+       SUMMARY
     ================================================= */
 
     const totalBookings =
       bookings.length;
 
     const upcomingBookings =
-      bookings.filter(
-        (booking) =>
-          booking.status ===
-          "UPCOMING"
+      effectiveStatuses.filter(
+        (status) =>
+          status === "UPCOMING"
       ).length;
 
     const completedBookings =
-      bookings.filter(
-        (booking) =>
-          booking.status ===
-          "COMPLETED"
+      effectiveStatuses.filter(
+        (status) =>
+          status === "COMPLETED"
       ).length;
 
     const cancelledBookings =
-      bookings.filter(
-        (booking) =>
-          booking.status ===
-          "CANCELLED"
+      effectiveStatuses.filter(
+        (status) =>
+          status === "CANCELLED"
       ).length;
 
     /* =================================================
-       ROOM UTILIZATION
+       ROOM BOOKING ACTIVITY
     ================================================= */
+
+    /*
+     * Cancelled bookings are excluded because they
+     * did not actually use the room.
+     */
 
     const roomMap =
       new Map<
@@ -561,7 +760,9 @@ export async function getAdminReports(
         }
       >();
 
-    for (const booking of bookings) {
+    for (
+      const booking of bookings
+    ) {
       if (
         booking.status ===
         "CANCELLED"
@@ -570,7 +771,7 @@ export async function getAdminReports(
       }
 
       const room =
-        booking.room as
+        booking.room as unknown as
           | {
               _id: unknown;
               name: string;
@@ -592,14 +793,17 @@ export async function getAdminReports(
         existing.bookingCount +=
           1;
       } else {
-        roomMap.set(roomId, {
+        roomMap.set(
           roomId,
-          roomName:
-            room.name,
-          location:
-            room.location,
-          bookingCount: 1,
-        });
+          {
+            roomId,
+            roomName:
+              room.name,
+            location:
+              room.location,
+            bookingCount: 1,
+          }
+        );
       }
     }
 
@@ -613,7 +817,8 @@ export async function getAdminReports(
       );
 
     const highestReportBookingCount =
-      roomUtilization.length > 0
+      roomUtilization.length >
+      0
         ? roomUtilization[0]
             .bookingCount
         : 0;
@@ -623,7 +828,13 @@ export async function getAdminReports(
         (room) => ({
           ...room,
 
-          percentage:
+          /*
+           * This is relative booking activity.
+           *
+           * It is NOT yet actual percentage of
+           * available working hours.
+           */
+          utilizationPercentage:
             highestReportBookingCount >
             0
               ? Math.round(
@@ -651,7 +862,9 @@ export async function getAdminReports(
         }
       >();
 
-    for (const booking of bookings) {
+    for (
+      const booking of bookings
+    ) {
       if (
         booking.status ===
         "CANCELLED"
@@ -660,7 +873,7 @@ export async function getAdminReports(
       }
 
       const user =
-        booking.user as
+        booking.user as unknown as
           | {
               _id: unknown;
               name: string;
@@ -677,31 +890,38 @@ export async function getAdminReports(
         String(user._id);
 
       const existing =
-        employeeMap.get(userId);
+        employeeMap.get(
+          userId
+        );
 
       if (existing) {
         existing.bookingCount +=
           1;
       } else {
-        employeeMap.set(userId, {
+        employeeMap.set(
           userId,
-          name: user.name,
-          email: user.email,
-          department:
-            user.department,
-          bookingCount: 1,
-        });
+          {
+            userId,
+            name: user.name,
+            email: user.email,
+            department:
+              user.department,
+            bookingCount: 1,
+          }
+        );
       }
     }
 
     const employeeActivity =
       Array.from(
         employeeMap.values()
-      ).sort(
-        (a, b) =>
-          b.bookingCount -
-          a.bookingCount
-      );
+      )
+        .sort(
+          (a, b) =>
+            b.bookingCount -
+            a.bookingCount
+        )
+        .slice(0, 20);
 
     /* =================================================
        DAILY BOOKING TREND
@@ -713,7 +933,9 @@ export async function getAdminReports(
         number
       >();
 
-    for (const booking of bookings) {
+    for (
+      const booking of bookings
+    ) {
       if (
         booking.status ===
         "CANCELLED"
@@ -721,13 +943,13 @@ export async function getAdminReports(
         continue;
       }
 
-      const date =
-        booking.date;
-
       dailyMap.set(
-        date,
-        (dailyMap.get(date) ||
-          0) + 1
+        booking.date,
+        (
+          dailyMap.get(
+            booking.date
+          ) || 0
+        ) + 1
       );
     }
 
@@ -742,10 +964,104 @@ export async function getAdminReports(
             )
         )
         .map(
-          ([date, count]) => ({
+          ([
             date,
-            count,
+            bookingCount,
+          ]) => ({
+            date,
+            bookingCount,
           })
+        );
+
+    /* =================================================
+       RECENT BOOKINGS
+    ================================================= */
+
+    /*
+     * Return a clean structure for the frontend instead
+     * of returning raw Mongoose populated documents.
+     */
+
+    const recentBookings =
+      bookings
+        .slice(0, 20)
+        .map(
+          (booking) => {
+            const user =
+              booking.user as unknown as
+                | {
+                    _id: unknown;
+                    name: string;
+                    email: string;
+                    department?: string;
+                  }
+                | null;
+
+            const room =
+              booking.room as unknown as
+                | {
+                    _id: unknown;
+                    name: string;
+                    location: string;
+                  }
+                | null;
+
+            return {
+              _id: String(
+                booking._id
+              ),
+
+              title:
+                booking.title,
+
+              date:
+                booking.date,
+
+              startTime:
+                booking.startTime,
+
+              endTime:
+                booking.endTime,
+
+              status:
+                getEffectiveBookingStatus(
+                  booking.date,
+                  booking.endTime,
+                  booking.status
+                ),
+
+              user: user
+                ? {
+                    _id: String(
+                      user._id
+                    ),
+
+                    name:
+                      user.name,
+
+                    email:
+                      user.email,
+
+                    department:
+                      user.department,
+                  }
+                : null,
+
+              room: room
+                ? {
+                    _id: String(
+                      room._id
+                    ),
+
+                    name:
+                      room.name,
+
+                    location:
+                      room.location,
+                  }
+                : null,
+            };
+          }
         );
 
     /* =================================================
@@ -758,8 +1074,8 @@ export async function getAdminReports(
       period,
 
       dateRange: {
-        startDate,
-        endDate,
+        start: startDate,
+        end: endDate,
       },
 
       summary: {
@@ -776,8 +1092,7 @@ export async function getAdminReports(
 
       dailyBookings,
 
-      recentBookings:
-        bookings.slice(0, 20),
+      recentBookings,
     });
   } catch (error) {
     console.error(

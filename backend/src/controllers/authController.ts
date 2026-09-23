@@ -44,11 +44,48 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string()
+      .min(1, "Current password is required"),
+
+    newPassword: z
+      .string()
+      .min(
+        8,
+        "New password must be at least 8 characters"
+      )
+      .max(
+        128,
+        "New password cannot exceed 128 characters"
+      ),
+
+    confirmPassword: z
+      .string()
+      .min(
+        1,
+        "Please confirm your new password"
+      ),
+  })
+  .refine(
+    (data) =>
+      data.newPassword ===
+      data.confirmPassword,
+    {
+      message:
+        "New password and confirmation password do not match",
+      path: ["confirmPassword"],
+    }
+  );
+
 /* =====================================================
    COMPANY EMAIL VALIDATION
 ===================================================== */
 
-function isDangoteEmail(email: string): boolean {
+function isDangoteEmail(
+  email: string
+): boolean {
   return email
     .trim()
     .toLowerCase()
@@ -74,7 +111,8 @@ function setAuthCookie(
         ? "none"
         : "lax",
 
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge:
+      7 * 24 * 60 * 60 * 1000,
 
     path: "/",
   });
@@ -116,7 +154,11 @@ export async function register(
 
     /* ---------- Check company email ---------- */
 
-    if (!isDangoteEmail(normalizedEmail)) {
+    if (
+      !isDangoteEmail(
+        normalizedEmail
+      )
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -171,7 +213,8 @@ export async function register(
 
     return res.status(201).json({
       success: true,
-      message: "Account created successfully",
+      message:
+        "Account created successfully",
 
       user: {
         id: user._id,
@@ -189,7 +232,8 @@ export async function register(
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong",
+      message:
+        "Something went wrong",
     });
   }
 }
@@ -227,7 +271,11 @@ export async function login(
 
     /* ---------- Check company email ---------- */
 
-    if (!isDangoteEmail(normalizedEmail)) {
+    if (
+      !isDangoteEmail(
+        normalizedEmail
+      )
+    ) {
       return res.status(401).json({
         success: false,
         message:
@@ -237,14 +285,16 @@ export async function login(
 
     /* ---------- Find user ---------- */
 
-    const user = await User.findOne({
-      email: normalizedEmail,
-    }).select("+passwordHash");
+    const user =
+      await User.findOne({
+        email: normalizedEmail,
+      }).select("+passwordHash");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message:
+          "Invalid email or password",
       });
     }
 
@@ -259,7 +309,8 @@ export async function login(
     if (!passwordValid) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message:
+          "Invalid email or password",
       });
     }
 
@@ -296,7 +347,8 @@ export async function login(
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong",
+      message:
+        "Something went wrong",
     });
   }
 }
@@ -315,7 +367,8 @@ export async function me(
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
+        message:
+          "Authentication required",
       });
     }
 
@@ -328,7 +381,8 @@ export async function me(
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message:
+          "User not found",
       });
     }
 
@@ -377,7 +431,152 @@ export async function me(
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong",
+      message:
+        "Something went wrong",
+    });
+  }
+}
+
+/* =====================================================
+   CHANGE PASSWORD
+===================================================== */
+
+export async function changePassword(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    /* ---------- Check authentication ---------- */
+
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required",
+      });
+    }
+
+    /* ---------- Validate request ---------- */
+
+    const result =
+      changePasswordSchema.safeParse(
+        req.body
+      );
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid password data",
+        errors:
+          result.error.flatten(),
+      });
+    }
+
+    const {
+      currentPassword,
+      newPassword,
+    } = result.data;
+
+    /* ---------- Find user ---------- */
+
+    const user =
+      await User.findById(
+        req.user.userId
+      ).select("+passwordHash");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "User not found",
+      });
+    }
+
+    /* ---------- Verify current password ---------- */
+
+    const currentPasswordValid =
+      await comparePassword(
+        currentPassword,
+        user.passwordHash
+      );
+
+    if (!currentPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Current password is incorrect",
+      });
+    }
+
+    /* ---------- Prevent password reuse ---------- */
+
+    const samePassword =
+      await comparePassword(
+        newPassword,
+        user.passwordHash
+      );
+
+    if (samePassword) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "New password must be different from your current password",
+      });
+    }
+
+    /* ---------- Hash new password ---------- */
+
+    const newPasswordHash =
+      await hashPassword(
+        newPassword
+      );
+
+    /* ---------- Save new password ---------- */
+
+    user.passwordHash =
+      newPasswordHash;
+
+    await user.save();
+
+    /* ---------- Clear authentication cookie ---------- */
+
+    res.clearCookie(
+      "access_token",
+      {
+        httpOnly: true,
+
+        secure:
+          process.env.NODE_ENV ===
+          "production",
+
+        sameSite:
+          process.env.NODE_ENV ===
+          "production"
+            ? "none"
+            : "lax",
+
+        path: "/",
+      }
+    );
+
+    /* ---------- Response ---------- */
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Password changed successfully. Please log in again.",
+    });
+  } catch (error) {
+    console.error(
+      "Change password error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Something went wrong",
     });
   }
 }
@@ -390,22 +589,28 @@ export function logout(
   _req: AuthenticatedRequest,
   res: Response
 ) {
-  res.clearCookie("access_token", {
-    httpOnly: true,
+  res.clearCookie(
+    "access_token",
+    {
+      httpOnly: true,
 
-    secure:
-      process.env.NODE_ENV === "production",
+      secure:
+        process.env.NODE_ENV ===
+        "production",
 
-    sameSite:
-      process.env.NODE_ENV === "production"
-        ? "none"
-        : "lax",
+      sameSite:
+        process.env.NODE_ENV ===
+        "production"
+          ? "none"
+          : "lax",
 
-    path: "/",
-  });
+      path: "/",
+    }
+  );
 
   return res.status(200).json({
     success: true,
-    message: "Logged out successfully",
+    message:
+      "Logged out successfully",
   });
 }

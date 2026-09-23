@@ -8,18 +8,21 @@ import {
 import { Booking } from "../models/Booking.js";
 import { Room } from "../models/Room.js";
 
+import {
+  createNotificationIfEnabled,
+} from "../utils/notificationService.js";
+
+import {
+  sendBookingCreatedEmails,
+  sendBookingCancelledEmails,
+} from "../utils/emailService.js";
+
 /* =====================================================
    HELPERS
 ===================================================== */
 
 /**
- * Validate a MongoDB ObjectId coming from req.params.
- *
- * Express/TypeScript can type route parameters as
- * string | string[] | undefined depending on the
- * installed type definitions.
- *
- * This helper safely converts that into a boolean.
+ * Validate MongoDB ObjectId.
  */
 function isValidObjectId(
   value: unknown
@@ -31,56 +34,211 @@ function isValidObjectId(
 }
 
 /* =====================================================
+   APP TIMEZONE
+===================================================== */
+
+const APP_TIMEZONE =
+  process.env.APP_TIMEZONE ||
+  "Asia/Kolkata";
+
+/**
+ * Get current date/time in application timezone.
+ */
+function getCurrentDateAndTime() {
+  const formatter =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone: APP_TIMEZONE,
+
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+
+        hour: "2-digit",
+        minute: "2-digit",
+
+        hourCycle: "h23",
+      }
+    );
+
+  const parts =
+    formatter.formatToParts(
+      new Date()
+    );
+
+  const values: Record<
+    string,
+    string
+  > = {};
+
+  for (const part of parts) {
+    if (
+      part.type !== "literal"
+    ) {
+      values[part.type] =
+        part.value;
+    }
+  }
+
+  return {
+    date:
+      `${values.year}-${values.month}-${values.day}`,
+
+    time:
+      `${values.hour}:${values.minute}`,
+  };
+}
+
+/* =====================================================
+   TIME HELPERS
+===================================================== */
+
+const SLOT_MINUTES = 15;
+
+/**
+ * Convert HH:mm to minutes.
+ */
+function timeToMinutes(
+  time: string
+): number {
+  const [hours, minutes] =
+    time
+      .split(":")
+      .map(Number);
+
+  return (
+    hours * 60 +
+    minutes
+  );
+}
+
+/**
+ * Convert minutes to HH:mm.
+ */
+function minutesToTime(
+  totalMinutes: number
+): string {
+  const hours =
+    Math.floor(
+      totalMinutes / 60
+    );
+
+  const minutes =
+    totalMinutes % 60;
+
+  return `${String(hours).padStart(
+    2,
+    "0"
+  )}:${String(minutes).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+/**
+ * Generate occupied 15-minute slots.
+ */
+function generateOccupiedSlots(
+  startTime: string,
+  endTime: string
+): string[] {
+  const startMinutes =
+    timeToMinutes(
+      startTime
+    );
+
+  const endMinutes =
+    timeToMinutes(
+      endTime
+    );
+
+  const slots: string[] = [];
+
+  for (
+    let current = startMinutes;
+    current < endMinutes;
+    current += SLOT_MINUTES
+  ) {
+    slots.push(
+      minutesToTime(
+        current
+      )
+    );
+  }
+
+  return slots;
+}
+
+/**
+ * Check whether time is aligned
+ * to a 15-minute boundary.
+ */
+function isValidSlotBoundary(
+  time: string
+): boolean {
+  return (
+    timeToMinutes(time) %
+      SLOT_MINUTES ===
+    0
+  );
+}
+
+/* =====================================================
    VALIDATION SCHEMA
 ===================================================== */
 
-const createBookingSchema = z.object({
-  roomId: z
-    .string()
-    .min(1, "Room is required"),
+const createBookingSchema =
+  z.object({
+    roomId: z
+      .string()
+      .min(
+        1,
+        "Room is required"
+      ),
 
-  title: z
-    .string()
-    .trim()
-    .min(
-      2,
-      "Title must be at least 2 characters"
-    )
-    .max(
-      200,
-      "Title is too long"
-    ),
+    title: z
+      .string()
+      .trim()
+      .min(
+        2,
+        "Title must be at least 2 characters"
+      )
+      .max(
+        200,
+        "Title is too long"
+      ),
 
-  date: z
-    .string()
-    .regex(
-      /^\d{4}-\d{2}-\d{2}$/,
-      "Date must be in YYYY-MM-DD format"
-    ),
+    date: z
+      .string()
+      .regex(
+        /^\d{4}-\d{2}-\d{2}$/,
+        "Date must be in YYYY-MM-DD format"
+      ),
 
-  startTime: z
-    .string()
-    .regex(
-      /^([01]\d|2[0-3]):([0-5]\d)$/,
-      "Start time must be in HH:mm format"
-    ),
+    startTime: z
+      .string()
+      .regex(
+        /^([01]\d|2[0-3]):([0-5]\d)$/,
+        "Start time must be in HH:mm format"
+      ),
 
-  endTime: z
-    .string()
-    .regex(
-      /^([01]\d|2[0-3]):([0-5]\d)$/,
-      "End time must be in HH:mm format"
-    ),
+    endTime: z
+      .string()
+      .regex(
+        /^([01]\d|2[0-3]):([0-5]\d)$/,
+        "End time must be in HH:mm format"
+      ),
 
-  description: z
-    .string()
-    .trim()
-    .max(
-      1000,
-      "Description is too long"
-    )
-    .optional(),
-});
+    description: z
+      .string()
+      .trim()
+      .max(
+        1000,
+        "Description is too long"
+      )
+      .optional(),
+  });
 
 /* =====================================================
    CREATE BOOKING
@@ -98,12 +256,13 @@ export async function createBooking(
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
+        message:
+          "Authentication required",
       });
     }
 
     /* ---------------------------------------------
-       VALIDATE REQUEST BODY
+       VALIDATE REQUEST
     --------------------------------------------- */
 
     const result =
@@ -115,7 +274,8 @@ export async function createBooking(
       return res.status(400).json({
         success: false,
         message:
-          result.error.issues[0]?.message ||
+          result.error.issues[0]
+            ?.message ||
           "Invalid booking data",
       });
     }
@@ -136,7 +296,8 @@ export async function createBooking(
     if (!isValidObjectId(roomId)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid room ID",
+        message:
+          "Invalid room ID",
       });
     }
 
@@ -144,35 +305,50 @@ export async function createBooking(
        VALIDATE DATE
     --------------------------------------------- */
 
-    const bookingDate = new Date(
-      `${date}T00:00:00`
-    );
+    const dateParts =
+      date.split("-").map(Number);
+
+    const [
+      year,
+      month,
+      day,
+    ] = dateParts;
+
+    const parsedDate =
+      new Date(
+        Date.UTC(
+          year,
+          month - 1,
+          day
+        )
+      );
 
     if (
       Number.isNaN(
-        bookingDate.getTime()
-      )
+        parsedDate.getTime()
+      ) ||
+      parsedDate
+        .toISOString()
+        .slice(0, 10) !== date
     ) {
       return res.status(400).json({
         success: false,
-        message: "Invalid booking date",
+        message:
+          "Invalid booking date",
       });
     }
 
     /* ---------------------------------------------
-       PREVENT PAST BOOKINGS
+       PREVENT PAST DATES
     --------------------------------------------- */
 
-    const today = new Date();
+    const {
+      date: today,
+      time: currentTime,
+    } =
+      getCurrentDateAndTime();
 
-    today.setHours(
-      0,
-      0,
-      0,
-      0
-    );
-
-    if (bookingDate < today) {
+    if (date < today) {
       return res.status(400).json({
         success: false,
         message:
@@ -184,11 +360,58 @@ export async function createBooking(
        VALIDATE TIME RANGE
     --------------------------------------------- */
 
-    if (startTime >= endTime) {
+    const startMinutes =
+      timeToMinutes(
+        startTime
+      );
+
+    const endMinutes =
+      timeToMinutes(
+        endTime
+      );
+
+    if (
+      startMinutes >=
+      endMinutes
+    ) {
       return res.status(400).json({
         success: false,
         message:
           "End time must be later than start time",
+      });
+    }
+
+    /* ---------------------------------------------
+       REQUIRE 15-MINUTE BOUNDARIES
+    --------------------------------------------- */
+
+    if (
+      !isValidSlotBoundary(
+        startTime
+      ) ||
+      !isValidSlotBoundary(
+        endTime
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Booking times must be in 15-minute intervals",
+      });
+    }
+
+    /* ---------------------------------------------
+       PREVENT PAST TIME TODAY
+    --------------------------------------------- */
+
+    if (
+      date === today &&
+      startTime <= currentTime
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You cannot book a time that has already passed",
       });
     }
 
@@ -211,29 +434,27 @@ export async function createBooking(
     }
 
     /* ---------------------------------------------
-       CHECK BOOKING CONFLICT
-       
-       Existing booking conflicts when:
+       GENERATE PROTECTED TIME SLOTS
+    --------------------------------------------- */
 
-       existing.startTime < new.endTime
+    const occupiedSlots =
+      generateOccupiedSlots(
+        startTime,
+        endTime
+      );
 
-       AND
+    if (
+      occupiedSlots.length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid booking duration",
+      });
+    }
 
-       existing.endTime > new.startTime
-
-       Example:
-
-       09:00 - 10:00
-       10:00 - 11:00
-
-       Allowed.
-
-       But:
-
-       09:00 - 10:00
-       09:30 - 10:30
-
-       Not allowed.
+    /* ---------------------------------------------
+       FAST CONFLICT CHECK
     --------------------------------------------- */
 
     const conflictingBooking =
@@ -267,26 +488,102 @@ export async function createBooking(
        CREATE BOOKING
     --------------------------------------------- */
 
-    const booking =
-      await Booking.create({
-        user: req.user.userId,
+    let booking;
 
-        room: room._id,
+    try {
+      booking =
+        await Booking.create({
+          user:
+            req.user.userId,
 
-        title: title.trim(),
+          room:
+            room._id,
 
-        date,
+          title:
+            title.trim(),
 
-        startTime,
+          date,
 
-        endTime,
+          startTime,
 
-        description:
-          description?.trim() ||
-          undefined,
+          endTime,
 
-        status: "UPCOMING",
-      });
+          description:
+            description?.trim() ||
+            undefined,
+
+          occupiedSlots,
+
+          status:
+            "UPCOMING",
+        });
+    } catch (error: unknown) {
+      /* -----------------------------------------
+         MONGODB DUPLICATE KEY ERROR
+      ----------------------------------------- */
+
+      if (
+        typeof error ===
+          "object" &&
+        error !== null &&
+        "code" in error &&
+        (
+          error as {
+            code?: number;
+          }
+        ).code === 11000
+      ) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "This room was just booked by another user for part of the selected time. Please choose another time.",
+        });
+      }
+
+      throw error;
+    }
+
+    /* =================================================
+       IN-APP BOOKING NOTIFICATION
+    ================================================= */
+
+    void createNotificationIfEnabled({
+      userId:
+        req.user.userId,
+
+      type:
+        "BOOKING_CREATED",
+
+      title:
+        "Booking confirmed",
+
+      message:
+        `Your booking for ${room.name} ` +
+        `on ${date} from ${startTime} to ${endTime} ` +
+        `has been confirmed.`,
+
+      bookingId:
+        booking._id.toString(),
+    });
+
+    /* =================================================
+       EMAIL NOTIFICATION
+       
+       IMPORTANT:
+       
+       emailService gets the user's email dynamically
+       from:
+       
+       booking.user → User → User.email
+       
+       No employee email is hardcoded here.
+       
+       It also finds all ADMIN users dynamically.
+    ================================================= */
+
+    void sendBookingCreatedEmails(
+      booking._id
+    );
 
     /* ---------------------------------------------
        POPULATE BOOKING
@@ -311,6 +608,7 @@ export async function createBooking(
 
     return res.status(201).json({
       success: true,
+
       message:
         "Room booked successfully",
 
@@ -340,10 +638,6 @@ export async function getMyBookings(
   res: Response
 ) {
   try {
-    /* ---------------------------------------------
-       AUTHENTICATION
-    --------------------------------------------- */
-
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -352,13 +646,10 @@ export async function getMyBookings(
       });
     }
 
-    /* ---------------------------------------------
-       GET USER BOOKINGS
-    --------------------------------------------- */
-
     const bookings =
       await Booking.find({
-        user: req.user.userId,
+        user:
+          req.user.userId,
       })
         .populate(
           "room",
@@ -396,10 +687,6 @@ export async function cancelMyBooking(
   res: Response
 ) {
   try {
-    /* ---------------------------------------------
-       AUTHENTICATION
-    --------------------------------------------- */
-
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -408,16 +695,8 @@ export async function cancelMyBooking(
       });
     }
 
-    /* ---------------------------------------------
-       GET BOOKING ID
-    --------------------------------------------- */
-
     const id: unknown =
       req.params.id;
-
-    /* ---------------------------------------------
-       VALIDATE BOOKING ID
-    --------------------------------------------- */
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
@@ -427,14 +706,11 @@ export async function cancelMyBooking(
       });
     }
 
-    /* ---------------------------------------------
-       FIND USER'S BOOKING
-    --------------------------------------------- */
-
     const booking =
       await Booking.findOne({
         _id: id,
-        user: req.user.userId,
+        user:
+          req.user.userId,
       });
 
     if (!booking) {
@@ -444,10 +720,6 @@ export async function cancelMyBooking(
           "Booking not found",
       });
     }
-
-    /* ---------------------------------------------
-       CHECK STATUS
-    --------------------------------------------- */
 
     if (
       booking.status ===
@@ -470,13 +742,65 @@ export async function cancelMyBooking(
     await booking.save();
 
     /* ---------------------------------------------
-       RESPONSE
+       FIND ROOM
     --------------------------------------------- */
+
+    const room =
+      await Room.findById(
+        booking.room
+      ).select("name");
+
+    /* =================================================
+       IN-APP CANCELLATION NOTIFICATION
+    ================================================= */
+
+    void createNotificationIfEnabled({
+      userId:
+        req.user.userId,
+
+      type:
+        "BOOKING_CANCELLED",
+
+      title:
+        "Booking cancelled",
+
+      message:
+        `Your booking for ${
+          room?.name ||
+          "the conference room"
+        } on ${
+          booking.date
+        } from ${
+          booking.startTime
+        } to ${
+          booking.endTime
+        } has been cancelled.`,
+
+      bookingId:
+        booking._id.toString(),
+    });
+
+    /* =================================================
+       EMAIL CANCELLATION NOTIFICATION
+       
+       emailService dynamically gets:
+       
+       booking.user → User → User.email
+       
+       and sends to all ADMIN users.
+    ================================================= */
+
+    void sendBookingCancelledEmails(
+      booking._id,
+      "Employee"
+    );
 
     return res.status(200).json({
       success: true,
+
       message:
         "Booking cancelled successfully",
+
       booking,
     });
   } catch (error) {
@@ -502,10 +826,6 @@ export async function getAllBookings(
   res: Response
 ) {
   try {
-    /* ---------------------------------------------
-       GET ALL BOOKINGS
-    --------------------------------------------- */
-
     const bookings =
       await Booking.find({})
         .populate(
@@ -548,16 +868,8 @@ export async function adminCancelBooking(
   res: Response
 ) {
   try {
-    /* ---------------------------------------------
-       GET BOOKING ID
-    --------------------------------------------- */
-
     const id: unknown =
       req.params.id;
-
-    /* ---------------------------------------------
-       VALIDATE BOOKING ID
-    --------------------------------------------- */
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
@@ -566,10 +878,6 @@ export async function adminCancelBooking(
           "Invalid booking ID",
       });
     }
-
-    /* ---------------------------------------------
-       FIND BOOKING
-    --------------------------------------------- */
 
     const booking =
       await Booking.findById(id);
@@ -581,10 +889,6 @@ export async function adminCancelBooking(
           "Booking not found",
       });
     }
-
-    /* ---------------------------------------------
-       CHECK STATUS
-    --------------------------------------------- */
 
     if (
       booking.status ===
@@ -607,13 +911,72 @@ export async function adminCancelBooking(
     await booking.save();
 
     /* ---------------------------------------------
-       RESPONSE
+       FIND ROOM
     --------------------------------------------- */
+
+    const room =
+      await Room.findById(
+        booking.room
+      ).select("name");
+
+    /* =================================================
+       IN-APP NOTIFICATION
+       
+       Goes to employee who created the booking.
+    ================================================= */
+
+    void createNotificationIfEnabled({
+      userId:
+        booking.user.toString(),
+
+      type:
+        "BOOKING_CANCELLED",
+
+      title:
+        "Booking cancelled by administrator",
+
+      message:
+        `Your booking for ${
+          room?.name ||
+          "the conference room"
+        } on ${
+          booking.date
+        } from ${
+          booking.startTime
+        } to ${
+          booking.endTime
+        } was cancelled by an administrator.`,
+
+      bookingId:
+        booking._id.toString(),
+    });
+
+    /* =================================================
+       EMAIL NOTIFICATION
+       
+       Dynamic:
+       
+       booking.user
+            ↓
+       User.email
+            ↓
+       Employee receives cancellation email
+       
+       Admin emails are also dynamically fetched
+       by emailService using role: "ADMIN".
+    ================================================= */
+
+    void sendBookingCancelledEmails(
+      booking._id,
+      "Administrator"
+    );
 
     return res.status(200).json({
       success: true,
+
       message:
         "Booking cancelled successfully",
+
       booking,
     });
   } catch (error) {

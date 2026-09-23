@@ -5,6 +5,7 @@ import {
   login,
   me,
   logout,
+  changePassword,
 } from "../controllers/authController.js";
 
 import {
@@ -38,6 +39,13 @@ router.get(
   "/me",
   requireAuth,
   me
+);
+
+// Change password
+router.patch(
+  "/change-password",
+  requireAuth,
+  changePassword
 );
 
 // Logout

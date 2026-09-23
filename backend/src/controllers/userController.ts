@@ -16,6 +16,68 @@ const updateUserRoleSchema = z.object({
 });
 
 /* =====================================================
+   UPDATE MY PROFILE VALIDATION
+===================================================== */
+
+const updateMyProfileSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Name must be at least 2 characters")
+    .max(100, "Name is too long")
+    .optional(),
+
+  department: z
+    .string()
+    .trim()
+    .max(100, "Department is too long")
+    .optional(),
+
+  defaultLocation: z
+    .string()
+    .trim()
+    .max(200, "Location is too long")
+    .optional(),
+
+  defaultDuration: z
+    .number()
+    .int()
+    .min(15, "Duration must be at least 15 minutes")
+    .max(480, "Duration cannot exceed 480 minutes")
+    .optional(),
+
+  /*
+   * IMPORTANT:
+   * User.ts uses uppercase values.
+   */
+  calendarView: z
+    .enum(["DAY", "WEEK", "MONTH"])
+    .optional(),
+
+  timezone: z
+    .string()
+    .trim()
+    .max(100, "Timezone is too long")
+    .optional(),
+
+  notifications: z
+    .object({
+      bookingConfirmation:
+        z.boolean().optional(),
+
+      bookingCancellation:
+        z.boolean().optional(),
+
+      bookingReminder:
+        z.boolean().optional(),
+
+      roomAvailable:
+        z.boolean().optional(),
+    })
+    .optional(),
+});
+
+/* =====================================================
    OBJECT ID VALIDATION
 ===================================================== */
 
@@ -26,6 +88,380 @@ function isValidObjectId(
     typeof value === "string" &&
     /^[a-fA-F0-9]{24}$/.test(value)
   );
+}
+
+/* =====================================================
+   GET MY PROFILE
+   AUTHENTICATED USER
+===================================================== */
+
+export async function getMyProfile(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    /* -------------------------------------------------
+       Authentication check
+    ------------------------------------------------- */
+
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    /* -------------------------------------------------
+       Find current user
+    ------------------------------------------------- */
+
+    const user = await User.findById(
+      req.user.userId
+    )
+      .select("-passwordHash")
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    /* -------------------------------------------------
+       Response
+    ------------------------------------------------- */
+
+    return res.status(200).json({
+      success: true,
+
+      user: {
+        id: user._id,
+
+        name: user.name,
+
+        email: user.email,
+
+        department:
+          user.department,
+
+        role: user.role,
+
+        profileImage:
+          user.profileImage,
+
+        defaultLocation:
+          user.defaultLocation,
+
+        favoriteRoom:
+          user.favoriteRoom,
+
+        defaultDuration:
+          user.defaultDuration,
+
+        calendarView:
+          user.calendarView,
+
+        timezone:
+          user.timezone,
+
+        /*
+         * Keep the complete Monday-Sunday
+         * working-hours structure.
+         */
+        workingHours:
+          user.workingHours,
+
+        notifications: {
+          bookingConfirmation:
+            user.notifications
+              ?.bookingConfirmation ?? true,
+
+          bookingCancellation:
+            user.notifications
+              ?.bookingCancellation ?? true,
+
+          bookingReminder:
+            user.notifications
+              ?.bookingReminder ?? true,
+
+          roomAvailable:
+            user.notifications
+              ?.roomAvailable ?? false,
+        },
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Get my profile error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+}
+
+/* =====================================================
+   UPDATE MY PROFILE
+   AUTHENTICATED USER
+===================================================== */
+
+export async function updateMyProfile(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    /* -------------------------------------------------
+       Authentication check
+    ------------------------------------------------- */
+
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    /* -------------------------------------------------
+       Validate request body
+    ------------------------------------------------- */
+
+    const result =
+      updateMyProfileSchema.safeParse(
+        req.body
+      );
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid profile data",
+        errors: result.error.flatten(),
+      });
+    }
+
+    const data = result.data;
+
+    /* -------------------------------------------------
+       Build update object
+    ------------------------------------------------- */
+
+    const update: Record<
+      string,
+      unknown
+    > = {};
+
+    /* ---------------- Name ---------------- */
+
+    if (data.name !== undefined) {
+      update.name = data.name;
+    }
+
+    /* ---------------- Department ---------------- */
+
+    if (
+      data.department !== undefined
+    ) {
+      update.department =
+        data.department;
+    }
+
+    /* ---------------- Default Location ---------------- */
+
+    if (
+      data.defaultLocation !==
+      undefined
+    ) {
+      update.defaultLocation =
+        data.defaultLocation;
+    }
+
+    /* ---------------- Default Duration ---------------- */
+
+    if (
+      data.defaultDuration !==
+      undefined
+    ) {
+      update.defaultDuration =
+        data.defaultDuration;
+    }
+
+    /* ---------------- Calendar View ---------------- */
+
+    if (
+      data.calendarView !== undefined
+    ) {
+      update.calendarView =
+        data.calendarView;
+    }
+
+    /* ---------------- Timezone ---------------- */
+
+    if (
+      data.timezone !== undefined
+    ) {
+      update.timezone =
+        data.timezone;
+    }
+
+    /* =================================================
+       NOTIFICATIONS
+    ================================================= */
+
+    if (
+      data.notifications
+        ?.bookingConfirmation !==
+      undefined
+    ) {
+      update[
+        "notifications.bookingConfirmation"
+      ] =
+        data.notifications
+          .bookingConfirmation;
+    }
+
+    if (
+      data.notifications
+        ?.bookingCancellation !==
+      undefined
+    ) {
+      update[
+        "notifications.bookingCancellation"
+      ] =
+        data.notifications
+          .bookingCancellation;
+    }
+
+    if (
+      data.notifications
+        ?.bookingReminder !==
+      undefined
+    ) {
+      update[
+        "notifications.bookingReminder"
+      ] =
+        data.notifications
+          .bookingReminder;
+    }
+
+    if (
+      data.notifications
+        ?.roomAvailable !==
+      undefined
+    ) {
+      update[
+        "notifications.roomAvailable"
+      ] =
+        data.notifications
+          .roomAvailable;
+    }
+
+    /* -------------------------------------------------
+       Update database
+    ------------------------------------------------- */
+
+    const user =
+      await User.findByIdAndUpdate(
+        req.user.userId,
+
+        {
+          $set: update,
+        },
+
+        {
+          new: true,
+          runValidators: true,
+        }
+      )
+        .select("-passwordHash")
+        .lean();
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    /* -------------------------------------------------
+       Response
+    ------------------------------------------------- */
+
+    return res.status(200).json({
+      success: true,
+
+      message:
+        "Profile updated successfully",
+
+      user: {
+        id: user._id,
+
+        name: user.name,
+
+        email: user.email,
+
+        department:
+          user.department,
+
+        role: user.role,
+
+        profileImage:
+          user.profileImage,
+
+        defaultLocation:
+          user.defaultLocation,
+
+        favoriteRoom:
+          user.favoriteRoom,
+
+        defaultDuration:
+          user.defaultDuration,
+
+        calendarView:
+          user.calendarView,
+
+        timezone:
+          user.timezone,
+
+        /*
+         * Return the complete working-hours
+         * structure from MongoDB.
+         */
+        workingHours:
+          user.workingHours,
+
+        notifications: {
+          bookingConfirmation:
+            user.notifications
+              ?.bookingConfirmation ?? true,
+
+          bookingCancellation:
+            user.notifications
+              ?.bookingCancellation ?? true,
+
+          bookingReminder:
+            user.notifications
+              ?.bookingReminder ?? true,
+
+          roomAvailable:
+            user.notifications
+              ?.roomAvailable ?? false,
+        },
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Update my profile error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
 }
 
 /* =====================================================
@@ -89,7 +525,8 @@ export async function updateUserRole(
        Validate user ID
     ------------------------------------------------- */
 
-    const id: unknown = req.params.id;
+    const id: unknown =
+      req.params.id;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
@@ -135,15 +572,18 @@ export async function updateUserRole(
        Prevent unnecessary role update
     ------------------------------------------------- */
 
-    if (targetUser.role === role) {
+    if (
+      targetUser.role === role
+    ) {
       return res.status(400).json({
         success: false,
-        message: `User is already ${role}`,
+        message:
+          `User is already ${role}`,
       });
     }
 
     /* -------------------------------------------------
-       Prevent admin from removing own admin access
+       Prevent admin from removing own access
     ------------------------------------------------- */
 
     if (
@@ -194,6 +634,7 @@ export async function updateUserRole(
 
     return res.status(200).json({
       success: true,
+
       message:
         role === "ADMIN"
           ? "User promoted to administrator"
@@ -201,10 +642,14 @@ export async function updateUserRole(
 
       user: {
         id: targetUser._id,
+
         name: targetUser.name,
+
         email: targetUser.email,
+
         department:
           targetUser.department,
+
         role: targetUser.role,
       },
     });

@@ -6,7 +6,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "create-admin": "tsx src/scripts/createAdmin.ts"
+    "create-admin": "tsx src/scripts/createAdmin.ts",
+    "migrate-booking-slots": "tsx src/scripts/migrateBookingSlots.ts"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +23,8 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.1",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.0.10",
     "zod": "^4.6.5"
   },
   "devDependencies": {
