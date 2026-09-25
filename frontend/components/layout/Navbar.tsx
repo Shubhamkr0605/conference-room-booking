@@ -99,7 +99,7 @@ export default function Navbar() {
         top-0
         z-50
         flex
-        h-18
+        h-[76px]
         items-center
         justify-between
         border-b
@@ -118,7 +118,11 @@ export default function Navbar() {
         <img
           src="/dangote-dark-logo.png"
           alt="Dangote"
-          className="h-12 w-auto object-contain"
+          className="
+            h-12
+            w-auto
+            object-contain
+          "
         />
       </div>
 

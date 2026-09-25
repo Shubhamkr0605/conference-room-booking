@@ -98,13 +98,35 @@ export default function Sidebar() {
         lg:flex
       "
     >
+
       {/* =================================================
           BRAND
       ================================================= */}
 
-      <div className="flex h-[98px] shrink-0 items-center border-b border-[#23458C] px-6">
+      <div
+        className="
+          flex
+          h-[98px]
+          shrink-0
+          items-center
+          border-b
+          border-[#23458C]
+          px-6
+        "
+      >
 
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white">
+        <div
+          className="
+            flex
+            h-12
+            w-12
+            shrink-0
+            items-center
+            justify-center
+            rounded-xl
+            bg-white
+          "
+        >
           <Building2
             size={24}
             className="text-[#102D72]"
@@ -130,10 +152,30 @@ export default function Sidebar() {
           ONLY THIS SECTION CAN SCROLL
       ================================================= */}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
+      <div
+        className="
+          min-h-0
+          flex-1
+          overflow-y-auto
+          px-4
+          py-6
+        "
+      >
 
-        <p className="mb-4 px-3 text-xs font-bold uppercase tracking-[0.2em] text-white/80">
-          {isAdmin ? "Admin Menu" : "Menu"}
+        <p
+          className="
+            mb-4
+            px-3
+            text-xs
+            font-bold
+            uppercase
+            tracking-[0.2em]
+            text-white/80
+          "
+        >
+          {isAdmin
+            ? "Admin Menu"
+            : "Menu"}
         </p>
 
         <nav className="space-y-2">
@@ -173,6 +215,7 @@ export default function Sidebar() {
                   }
                 `}
               >
+
                 <Icon
                   size={20}
                   className="shrink-0 text-white"
@@ -194,27 +237,74 @@ export default function Sidebar() {
           USER — ALWAYS AT BOTTOM OF SCREEN
       ================================================= */}
 
-      <div className="shrink-0 border-t border-[#23458C] bg-[#102D72] p-4">
+      <div
+        className="
+          shrink-0
+          border-t
+          border-[#23458C]
+          bg-[#102D72]
+          p-4
+        "
+      >
 
-        <div className="flex items-center gap-3 rounded-xl bg-[#0C245C] p-3">
+        <div
+          className="
+            flex
+            items-center
+            gap-3
+            rounded-xl
+            bg-[#0C245C]
+            p-3
+          "
+        >
 
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-[#102D72]">
+          <div
+            className="
+              flex
+              h-11
+              w-11
+              shrink-0
+              items-center
+              justify-center
+              rounded-full
+              bg-white
+              text-sm
+              font-bold
+              text-[#102D72]
+            "
+          >
             {user?.name
               ?.trim()
               .split(/\s+/)
-              .map((name) => name[0])
+              .map(
+                (name) => name[0]
+              )
               .join("")
               .slice(0, 2)
-              .toUpperCase() || "U"}
+              .toUpperCase() ||
+              "U"}
           </div>
 
           <div className="min-w-0">
 
-            <p className="truncate text-sm font-bold text-white">
+            <p
+              className="
+                truncate
+                text-sm
+                font-bold
+                text-white
+              "
+            >
               {user?.name || "User"}
             </p>
 
-            <p className="truncate text-xs text-white/80">
+            <p
+              className="
+                truncate
+                text-xs
+                text-white/80
+              "
+            >
               {isAdmin
                 ? "Administrator"
                 : "Employee"}
