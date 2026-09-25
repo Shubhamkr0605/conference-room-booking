@@ -98,6 +98,10 @@ const SLOT_MINUTES = 15;
 
 /**
  * Convert HH:mm to minutes.
+ *
+ * Example:
+ *
+ * 10:30 → 630
  */
 function timeToMinutes(
   time: string
@@ -115,6 +119,10 @@ function timeToMinutes(
 
 /**
  * Convert minutes to HH:mm.
+ *
+ * Example:
+ *
+ * 630 → 10:30
  */
 function minutesToTime(
   totalMinutes: number
@@ -138,6 +146,19 @@ function minutesToTime(
 
 /**
  * Generate occupied 15-minute slots.
+ *
+ * Example:
+ *
+ * 10:00 → 11:00
+ *
+ * returns:
+ *
+ * [
+ *   "10:00",
+ *   "10:15",
+ *   "10:30",
+ *   "10:45"
+ * ]
  */
 function generateOccupiedSlots(
   startTime: string,
@@ -241,6 +262,395 @@ const createBookingSchema =
   });
 
 /* =====================================================
+   GET ROOM AVAILABILITY
+===================================================== */
+
+/**
+ * Check which rooms are already booked
+ * for a selected date and time range.
+ *
+ * Frontend request:
+ *
+ * GET /api/bookings/availability
+ *
+ * Example:
+ *
+ * /api/bookings/availability
+ *   ?date=2026-09-25
+ *   &startTime=10:00
+ *   &endTime=11:00
+ *
+ * Response:
+ *
+ * {
+ *   success: true,
+ *   date: "2026-09-25",
+ *   startTime: "10:00",
+ *   endTime: "11:00",
+ *   bookedRoomIds: [...],
+ *   bookedRooms: [...],
+ *   availableRooms: [...]
+ * }
+ */
+export async function getRoomAvailability(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    /* ---------------------------------------------
+       AUTHENTICATION
+    --------------------------------------------- */
+
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required",
+      });
+    }
+
+    /* ---------------------------------------------
+       READ QUERY PARAMETERS
+    --------------------------------------------- */
+
+    const date =
+      typeof req.query.date ===
+      "string"
+        ? req.query.date
+        : "";
+
+    const startTime =
+      typeof req.query.startTime ===
+      "string"
+        ? req.query.startTime
+        : "";
+
+    const endTime =
+      typeof req.query.endTime ===
+      "string"
+        ? req.query.endTime
+        : "";
+
+    /* ---------------------------------------------
+       VALIDATE DATE FORMAT
+    --------------------------------------------- */
+
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(
+        date
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Date must be in YYYY-MM-DD format",
+      });
+    }
+
+    /* ---------------------------------------------
+       VALIDATE DATE ACTUALLY EXISTS
+    --------------------------------------------- */
+
+    const dateParts =
+      date
+        .split("-")
+        .map(Number);
+
+    const [
+      year,
+      month,
+      day,
+    ] = dateParts;
+
+    const parsedDate =
+      new Date(
+        Date.UTC(
+          year,
+          month - 1,
+          day
+        )
+      );
+
+    if (
+      Number.isNaN(
+        parsedDate.getTime()
+      ) ||
+      parsedDate
+        .toISOString()
+        .slice(0, 10) !==
+        date
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid booking date",
+      });
+    }
+
+    /* ---------------------------------------------
+       VALIDATE TIME FORMAT
+    --------------------------------------------- */
+
+    const timeRegex =
+      /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+    if (
+      !timeRegex.test(startTime)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid start time",
+      });
+    }
+
+    if (
+      !timeRegex.test(endTime)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid end time",
+      });
+    }
+
+    /* ---------------------------------------------
+       CONVERT TIMES TO MINUTES
+    --------------------------------------------- */
+
+    const startMinutes =
+      timeToMinutes(
+        startTime
+      );
+
+    const endMinutes =
+      timeToMinutes(
+        endTime
+      );
+
+    /* ---------------------------------------------
+       VALIDATE TIME RANGE
+    --------------------------------------------- */
+
+    if (
+      startMinutes >=
+      endMinutes
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "End time must be later than start time",
+      });
+    }
+
+    /* ---------------------------------------------
+       REQUIRE 15-MINUTE BOUNDARIES
+    --------------------------------------------- */
+
+    if (
+      !isValidSlotBoundary(
+        startTime
+      ) ||
+      !isValidSlotBoundary(
+        endTime
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Times must be in 15-minute intervals",
+      });
+    }
+
+    /* ---------------------------------------------
+       PREVENT PAST DATE
+    --------------------------------------------- */
+
+    const {
+      date: today,
+      time: currentTime,
+    } =
+      getCurrentDateAndTime();
+
+    if (date < today) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Cannot check availability for a past date",
+      });
+    }
+
+    /* ---------------------------------------------
+       PREVENT PAST TIME TODAY
+
+       IMPORTANT:
+       Compare START TIME, not END TIME.
+
+       This keeps availability validation
+       consistent with createBooking().
+    --------------------------------------------- */
+
+    if (
+      date === today &&
+      startTime <= currentTime
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "The selected time has already passed",
+      });
+    }
+
+    /* ---------------------------------------------
+       GET ACTIVE ROOMS
+    --------------------------------------------- */
+
+    const activeRooms =
+      await Room.find({
+        isActive: true,
+      })
+        .select(
+          "_id name capacity location description facilities isActive"
+        )
+        .lean();
+
+    /* ---------------------------------------------
+       FIND CONFLICTING BOOKINGS
+
+       A booking conflicts when:
+
+       existing.startTime < requested.endTime
+
+       AND
+
+       existing.endTime > requested.startTime
+
+       Example:
+
+       Existing:
+       10:00 - 11:00
+
+       Requested:
+       10:30 - 11:30
+
+       CONFLICT ❌
+
+       Example:
+
+       Existing:
+       10:00 - 11:00
+
+       Requested:
+       11:00 - 12:00
+
+       NO CONFLICT ✅
+    --------------------------------------------- */
+
+    const conflictingBookings =
+      await Booking.find({
+        date,
+
+        status: {
+          $ne: "CANCELLED",
+        },
+
+        startTime: {
+          $lt: endTime,
+        },
+
+        endTime: {
+          $gt: startTime,
+        },
+      })
+        .select(
+          "room startTime endTime title"
+        )
+        .lean();
+
+    /* ---------------------------------------------
+       CREATE UNIQUE BOOKED ROOM IDS
+    --------------------------------------------- */
+
+    const bookedRoomIds =
+      Array.from(
+        new Set(
+          conflictingBookings.map(
+            (booking) =>
+              String(
+                booking.room
+              )
+          )
+        )
+      );
+
+    /* ---------------------------------------------
+       BOOKED ROOM DETAILS
+    --------------------------------------------- */
+
+    const bookedRooms =
+      conflictingBookings.map(
+        (booking) => ({
+          roomId: String(
+            booking.room
+          ),
+
+          startTime:
+            booking.startTime,
+
+          endTime:
+            booking.endTime,
+
+          title:
+            booking.title,
+        })
+      );
+
+    /* ---------------------------------------------
+       AVAILABLE ROOMS
+    --------------------------------------------- */
+
+    const availableRooms =
+      activeRooms.filter(
+        (room) =>
+          !bookedRoomIds.includes(
+            String(room._id)
+          )
+      );
+
+    /* ---------------------------------------------
+       RESPONSE
+    --------------------------------------------- */
+
+    return res.status(200).json({
+      success: true,
+
+      date,
+
+      startTime,
+
+      endTime,
+
+      bookedRoomIds,
+
+      bookedRooms,
+
+      availableRooms,
+    });
+  } catch (error) {
+    console.error(
+      "Room availability error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to check room availability",
+    });
+  }
+}
+
+/* =====================================================
    CREATE BOOKING
 ===================================================== */
 
@@ -293,7 +703,11 @@ export async function createBooking(
        VALIDATE ROOM ID
     --------------------------------------------- */
 
-    if (!isValidObjectId(roomId)) {
+    if (
+      !isValidObjectId(
+        roomId
+      )
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -329,7 +743,8 @@ export async function createBooking(
       ) ||
       parsedDate
         .toISOString()
-        .slice(0, 10) !== date
+        .slice(0, 10) !==
+        date
     ) {
       return res.status(400).json({
         success: false,
@@ -568,16 +983,16 @@ export async function createBooking(
 
     /* =================================================
        EMAIL NOTIFICATION
-       
+
        IMPORTANT:
-       
+
        emailService gets the user's email dynamically
        from:
-       
+
        booking.user → User → User.email
-       
+
        No employee email is hardcoded here.
-       
+
        It also finds all ADMIN users dynamically.
     ================================================= */
 
@@ -638,6 +1053,10 @@ export async function getMyBookings(
   res: Response
 ) {
   try {
+    /* ---------------------------------------------
+       AUTHENTICATION
+    --------------------------------------------- */
+
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -645,6 +1064,10 @@ export async function getMyBookings(
           "Authentication required",
       });
     }
+
+    /* ---------------------------------------------
+       GET USER BOOKINGS
+    --------------------------------------------- */
 
     const bookings =
       await Booking.find({
@@ -687,6 +1110,10 @@ export async function cancelMyBooking(
   res: Response
 ) {
   try {
+    /* ---------------------------------------------
+       AUTHENTICATION
+    --------------------------------------------- */
+
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -695,16 +1122,30 @@ export async function cancelMyBooking(
       });
     }
 
+    /* ---------------------------------------------
+       GET BOOKING ID
+    --------------------------------------------- */
+
     const id: unknown =
       req.params.id;
 
-    if (!isValidObjectId(id)) {
+    /* ---------------------------------------------
+       VALIDATE BOOKING ID
+    --------------------------------------------- */
+
+    if (
+      !isValidObjectId(id)
+    ) {
       return res.status(400).json({
         success: false,
         message:
           "Invalid booking ID",
       });
     }
+
+    /* ---------------------------------------------
+       FIND USER'S BOOKING
+    --------------------------------------------- */
 
     const booking =
       await Booking.findOne({
@@ -782,11 +1223,11 @@ export async function cancelMyBooking(
 
     /* =================================================
        EMAIL CANCELLATION NOTIFICATION
-       
+
        emailService dynamically gets:
-       
+
        booking.user → User → User.email
-       
+
        and sends to all ADMIN users.
     ================================================= */
 
@@ -871,7 +1312,9 @@ export async function adminCancelBooking(
     const id: unknown =
       req.params.id;
 
-    if (!isValidObjectId(id)) {
+    if (
+      !isValidObjectId(id)
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -921,7 +1364,7 @@ export async function adminCancelBooking(
 
     /* =================================================
        IN-APP NOTIFICATION
-       
+
        Goes to employee who created the booking.
     ================================================= */
 
@@ -953,15 +1396,15 @@ export async function adminCancelBooking(
 
     /* =================================================
        EMAIL NOTIFICATION
-       
+
        Dynamic:
-       
+
        booking.user
-            ↓
+           ↓
        User.email
-            ↓
+           ↓
        Employee receives cancellation email
-       
+
        Admin emails are also dynamically fetched
        by emailService using role: "ADMIN".
     ================================================= */

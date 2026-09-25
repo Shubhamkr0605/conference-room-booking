@@ -2,41 +2,56 @@ import { Router } from "express";
 
 import {
   createBooking,
+  getRoomAvailability,
   getMyBookings,
   cancelMyBooking,
   getAllBookings,
   adminCancelBooking,
 } from "../controllers/bookingController.js";
 
-import {
-  requireAuth,
-} from "../middleware/authMiddleware.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 
-import {
-  requireRole,
-} from "../middleware/roleMiddleware.js";
+import { requireRole } from "../middleware/roleMiddleware.js";
 
 const router = Router();
 
 /* =====================================================
-   EMPLOYEE + ADMIN
+   ROOM AVAILABILITY
+
+   IMPORTANT:
+   Keep this BEFORE "/:id" routes.
 ===================================================== */
 
-/* Create booking */
+router.get(
+  "/availability",
+  requireAuth,
+  getRoomAvailability
+);
+
+/* =====================================================
+   CREATE BOOKING
+===================================================== */
+
 router.post(
   "/",
   requireAuth,
   createBooking
 );
 
-/* Get current user's bookings */
+/* =====================================================
+   MY BOOKINGS
+===================================================== */
+
 router.get(
   "/my",
   requireAuth,
   getMyBookings
 );
 
-/* Cancel current user's booking */
+/* =====================================================
+   CANCEL MY BOOKING
+===================================================== */
+
 router.patch(
   "/:id/cancel",
   requireAuth,
@@ -44,18 +59,20 @@ router.patch(
 );
 
 /* =====================================================
-   ADMIN ONLY
+   ADMIN - GET ALL BOOKINGS
 ===================================================== */
 
-/* Get all bookings */
 router.get(
-  "/admin",
+  "/",
   requireAuth,
   requireRole("ADMIN"),
   getAllBookings
 );
 
-/* Cancel any booking */
+/* =====================================================
+   ADMIN - CANCEL BOOKING
+===================================================== */
+
 router.patch(
   "/:id/admin-cancel",
   requireAuth,

@@ -59,7 +59,9 @@ export default function LoginPage() {
     /* ---------- Validate email ---------- */
 
     if (!normalizedEmail) {
-      setError("Please enter your work email address.");
+      setError(
+        "Please enter your work email address."
+      );
       return;
     }
 
@@ -73,20 +75,27 @@ export default function LoginPage() {
     /* ---------- Validate password ---------- */
 
     if (!formData.password) {
-      setError("Please enter your password.");
+      setError(
+        "Please enter your password."
+      );
       return;
     }
 
     setIsLoading(true);
 
     try {
+      /* =================================================
+         LOGIN REQUEST
+      ================================================= */
+
       const response = await fetch(
         `${API_URL}/api/auth/login`,
         {
           method: "POST",
 
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
 
           credentials: "include",
@@ -98,7 +107,12 @@ export default function LoginPage() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
+
+      /* =================================================
+         LOGIN FAILED
+      ================================================= */
 
       if (!response.ok) {
         setError(
@@ -109,14 +123,70 @@ export default function LoginPage() {
         return;
       }
 
-      /* -----------------------------------------------
-         Login successful
+      /* =================================================
+         LOGIN SUCCESSFUL
 
-         Backend has already stored the JWT
-         inside an HTTP-only cookie.
-      ------------------------------------------------ */
+         Backend has stored the JWT inside the
+         HTTP-only cookie.
 
-      window.location.href = "/dashboard";
+         Now ask the backend who is logged in.
+         This lets us determine whether the
+         account is ADMIN or EMPLOYEE.
+      ================================================= */
+
+      const meResponse =
+        await fetch(
+          `${API_URL}/api/auth/me`,
+          {
+            method: "GET",
+
+            credentials: "include",
+
+            cache: "no-store",
+          }
+        );
+
+      const meData =
+        await meResponse.json();
+
+      /* =================================================
+         AUTHENTICATED USER FETCH FAILED
+      ================================================= */
+
+      if (
+        !meResponse.ok ||
+        !meData.success ||
+        !meData.user
+      ) {
+        console.error(
+          "Failed to fetch authenticated user:",
+          meData
+        );
+
+        setError(
+          meData.message ||
+            "Login succeeded, but we could not determine your account role. Please try again."
+        );
+
+        return;
+      }
+
+      /* =================================================
+         ROLE-BASED REDIRECT
+
+         ADMIN    → /admin
+         EMPLOYEE → /dashboard
+      ================================================= */
+
+      if (
+        meData.user.role === "ADMIN"
+      ) {
+        window.location.href =
+          "/admin";
+      } else {
+        window.location.href =
+          "/dashboard";
+      }
     } catch (error) {
       console.error(
         "Login error:",
@@ -133,7 +203,6 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-[#071B45]">
-
       <div className="grid min-h-screen lg:grid-cols-[45%_55%]">
 
         {/* =====================================================
@@ -275,11 +344,6 @@ export default function LoginPage() {
                             event.target.value,
                         });
 
-                        /*
-                         Clear previous error
-                         when user starts correcting
-                         the email.
-                        */
                         if (error) {
                           setError("");
                         }
@@ -439,7 +503,6 @@ export default function LoginPage() {
         </section>
 
       </div>
-
     </main>
   );
 }

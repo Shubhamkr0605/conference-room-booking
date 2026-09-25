@@ -55,6 +55,20 @@ const AuthContext =
     undefined
   );
 
+/* =====================================================
+   HELPER
+===================================================== */
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
+}
+
+/* =====================================================
+   PROVIDER
+===================================================== */
+
 export function AuthProvider({
   children,
 }: {
@@ -71,34 +85,94 @@ export function AuthProvider({
   ===================================================== */
 
   async function refreshUser() {
-    try {
-      const response = await fetch(
-        `${API_URL}/api/auth/me`,
-        {
-          method: "GET",
-          credentials: "include",
+    const maxAttempts = 2;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const controller = new AbortController();
+
+      const timeout = setTimeout(() => {
+        controller.abort();
+      }, 8000);
+
+      try {
+        const response = await fetch(
+          `${API_URL}/api/auth/me`,
+          {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeout);
+
+        /*
+         * 401 is normal when there is no logged-in user.
+         * It should NOT be treated as a fetch error.
+         */
+        if (response.status === 401) {
+          setUser(null);
+          return;
         }
-      );
 
-      if (!response.ok) {
-        setUser(null);
+        /*
+         * Other HTTP errors
+         */
+        if (!response.ok) {
+          setUser(null);
+
+          console.warn(
+            `Authentication check returned HTTP ${response.status}.`
+          );
+
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data?.success && data?.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+
         return;
-      }
+      } catch (error) {
+        clearTimeout(timeout);
 
-      const data = await response.json();
+        /*
+         * Retry once if the browser temporarily
+         * cannot reach the backend.
+         */
+        if (attempt < maxAttempts) {
+          await sleep(500);
+          continue;
+        }
 
-      if (data.success) {
-        setUser(data.user);
-      } else {
+        /*
+         * AbortError means our request timed out.
+         */
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          console.warn(
+            "Authentication check timed out."
+          );
+        } else {
+          console.warn(
+            "Authentication check could not reach the server."
+          );
+        }
+
+        /*
+         * Do not crash the application.
+         * Treat the user as logged out until the next
+         * successful authentication check.
+         */
         setUser(null);
       }
-    } catch (error) {
-      console.error(
-        "Failed to fetch authenticated user:",
-        error
-      );
-
-      setUser(null);
     }
   }
 
@@ -107,15 +181,23 @@ export function AuthProvider({
   ===================================================== */
 
   useEffect(() => {
+    let mounted = true;
+
     async function checkAuthentication() {
       try {
         await refreshUser();
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     }
 
     checkAuthentication();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   /* =====================================================
@@ -124,16 +206,22 @@ export function AuthProvider({
 
   async function logout() {
     try {
-      await fetch(
+      const response = await fetch(
         `${API_URL}/api/auth/logout`,
         {
           method: "POST",
           credentials: "include",
         }
       );
+
+      if (!response.ok && response.status !== 401) {
+        console.warn(
+          `Logout request returned HTTP ${response.status}.`
+        );
+      }
     } catch (error) {
-      console.error(
-        "Logout error:",
+      console.warn(
+        "Logout request could not reach the server.",
         error
       );
     } finally {

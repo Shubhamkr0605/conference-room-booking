@@ -1,27 +1,24 @@
 "use client";
 
 import {
+  AlertCircle,
   Bell,
+  Building2,
   CalendarDays,
   Check,
   Eye,
   EyeOff,
+  Loader2,
   Lock,
   LogOut,
   Mail,
   MapPin,
   Save,
   User,
-  Building2,
-  Loader2,
-  AlertCircle,
   X,
 } from "lucide-react";
 
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -43,9 +40,7 @@ interface SettingsData {
   role: string;
 
   defaultLocation: string;
-
   defaultView: CalendarView;
-
   defaultDuration: string;
 
   bookingConfirmation: boolean;
@@ -64,11 +59,8 @@ interface ProfileResponse {
     role: "ADMIN" | "EMPLOYEE";
 
     defaultLocation?: string;
-
     defaultDuration: number;
-
     calendarView: CalendarView;
-
     timezone?: string;
 
     notifications?: {
@@ -96,7 +88,7 @@ const defaultSettings: SettingsData = {
 
   defaultView: "WEEK",
 
-  defaultDuration: "60 minutes",
+  defaultDuration: "1 hour",
 
   bookingConfirmation: true,
   bookingCancellation: true,
@@ -107,9 +99,7 @@ const defaultSettings: SettingsData = {
    DURATION HELPERS
 ===================================================== */
 
-function durationToLabel(
-  duration: number
-): string {
+function durationToLabel(duration: number): string {
   switch (duration) {
     case 15:
       return "15 minutes";
@@ -134,9 +124,7 @@ function durationToLabel(
   }
 }
 
-function labelToDuration(
-  value: string
-): number {
+function labelToDuration(value: string): number {
   switch (value) {
     case "15 minutes":
       return 15;
@@ -166,6 +154,68 @@ function labelToDuration(
         : 60;
     }
   }
+}
+
+/* =====================================================
+   REUSABLE SECTION HEADER
+===================================================== */
+
+function SectionHeader({
+  icon,
+  title,
+  description,
+  iconClassName = "bg-[#EEF4FF] text-[#1D55B8]",
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  iconClassName?: string;
+}) {
+  return (
+    <div className="border-b border-[#E5ECF7] px-6 py-5 md:px-7">
+      <div className="flex items-center gap-3">
+
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconClassName}`}
+        >
+          {icon}
+        </div>
+
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-[#10275F]">
+            {title}
+          </h2>
+
+          <p className="mt-0.5 text-sm text-[#64748B]">
+            {description}
+          </p>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+/* =====================================================
+   INPUT WRAPPER
+===================================================== */
+
+function InputWrapper({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative">
+      <div className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[#64748B]">
+        {icon}
+      </div>
+
+      {children}
+    </div>
+  );
 }
 
 /* =====================================================
@@ -265,12 +315,9 @@ export default function SettingsContent() {
 
         setSettings({
           name: user.name || "",
-
           email: user.email || "",
-
           department:
             user.department || "",
-
           role: user.role,
 
           defaultLocation:
@@ -349,9 +396,7 @@ export default function SettingsContent() {
         `${API_URL}/api/users/me`,
         {
           method: "PATCH",
-
           credentials: "include",
-
           headers: {
             "Content-Type":
               "application/json",
@@ -527,9 +572,7 @@ export default function SettingsContent() {
         `${API_URL}/api/auth/change-password`,
         {
           method: "PATCH",
-
           credentials: "include",
-
           headers: {
             "Content-Type":
               "application/json",
@@ -559,18 +602,10 @@ export default function SettingsContent() {
         "Password changed successfully. Redirecting to login..."
       );
 
-      /*
-       * Clear sensitive values immediately.
-       */
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
 
-      /*
-       * The backend clears the access token.
-       * Send the user to login so they can
-       * authenticate using the new password.
-       */
       setTimeout(() => {
         window.location.href =
           "/login";
@@ -616,22 +651,28 @@ export default function SettingsContent() {
   }
 
   /* =====================================================
-     LOADING STATE
+     LOADING
   ===================================================== */
 
   if (loading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center">
-        <div className="text-center">
-          <Loader2
-            size={32}
-            className="mx-auto animate-spin text-[#10275F]"
-          />
 
-          <p className="mt-4 text-sm font-medium text-gray-500">
+        <div className="text-center">
+
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
+            <Loader2
+              size={28}
+              className="animate-spin text-[#1D55B8]"
+            />
+          </div>
+
+          <p className="mt-4 text-sm font-medium text-[#64748B]">
             Loading your settings...
           </p>
+
         </div>
+
       </div>
     );
   }
@@ -642,28 +683,40 @@ export default function SettingsContent() {
 
   return (
     <>
-      <div className="min-h-screen p-5 md:p-8 lg:p-10">
+      <div className="min-h-screen w-full p-5 md:p-8 lg:p-10">
 
         {/* =================================================
             PAGE HEADER
         ================================================= */}
 
         <div className="mb-8">
-          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-rose-600">
+
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#E83B32]">
             Account
           </p>
 
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
-            Settings
-          </h1>
+          <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
 
-          <p className="mt-2 text-gray-600">
-            Manage your profile, booking
-            preferences and notifications.
-          </p>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-[#10275F] md:text-4xl">
+                Settings
+              </h1>
+
+              <p className="mt-2 text-[#64748B]">
+                Manage your profile, booking
+                preferences and notifications.
+              </p>
+            </div>
+
+          </div>
+
         </div>
 
-        <div className="mx-auto max-w-5xl space-y-6">
+        {/* =================================================
+            SETTINGS CONTENT
+        ================================================= */}
+
+        <div className="w-full space-y-6">
 
           {/* =================================================
               ERROR
@@ -671,12 +724,14 @@ export default function SettingsContent() {
 
           {error && (
             <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
+
               <AlertCircle
                 size={20}
                 className="mt-0.5 shrink-0"
               />
 
               <p>{error}</p>
+
             </div>
           )}
 
@@ -685,13 +740,15 @@ export default function SettingsContent() {
           ================================================= */}
 
           {successMessage && (
-            <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-4 text-sm text-green-700">
+            <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-[#EEF4FF] px-4 py-4 text-sm font-medium text-[#17438F]">
+
               <Check
                 size={20}
                 className="mt-0.5 shrink-0"
               />
 
               <p>{successMessage}</p>
+
             </div>
           )}
 
@@ -699,36 +756,21 @@ export default function SettingsContent() {
               PROFILE
           ================================================= */}
 
-          <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
 
-            <div className="border-b border-gray-100 px-6 py-5 md:px-7">
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50">
-                  <User
-                    size={20}
-                    className="text-rose-600"
-                  />
-                </div>
-
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Profile
-                  </h2>
-
-                  <p className="text-sm text-gray-500">
-                    Your account information
-                  </p>
-                </div>
-
-              </div>
-
-            </div>
+            <SectionHeader
+              icon={
+                <User
+                  size={20}
+                />
+              }
+              title="Profile"
+              description="Your account information"
+            />
 
             <div className="grid gap-5 p-6 md:grid-cols-2 md:p-7">
 
-              {/* Name */}
+              {/* Full Name */}
 
               <div>
 
@@ -739,13 +781,9 @@ export default function SettingsContent() {
                   Full Name
                 </label>
 
-                <div className="relative">
-
-                  <User
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-[#10275F]/60"
-                  />
-
+                <InputWrapper
+                  icon={<User size={18} />}
+                >
                   <input
                     id="name"
                     type="text"
@@ -756,14 +794,13 @@ export default function SettingsContent() {
                         event.target.value
                       )
                     }
-                    className="h-14 w-full rounded-xl border border-[#D5DEEF] bg-[#F8FAFD] pl-12 pr-4 text-sm text-[#10275F] outline-none transition focus:border-[#10275F] focus:bg-white focus:ring-4 focus:ring-[#10275F]/5"
+                    className="h-14 w-full rounded-xl border border-[#D5E2F7] bg-[#F6F9FF] pl-12 pr-4 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 hover:border-[#B8CCEC] focus:border-[#1D55B8] focus:bg-white focus:ring-4 focus:ring-[#1D55B8]/10"
                   />
-
-                </div>
+                </InputWrapper>
 
               </div>
 
-              {/* Email */}
+              {/* Work Email */}
 
               <div>
 
@@ -774,24 +811,19 @@ export default function SettingsContent() {
                   Work Email
                 </label>
 
-                <div className="relative">
-
-                  <Mail
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-[#10275F]/60"
-                  />
-
+                <InputWrapper
+                  icon={<Mail size={18} />}
+                >
                   <input
                     id="email"
                     type="email"
                     value={settings.email}
                     disabled
-                    className="h-14 w-full cursor-not-allowed rounded-xl border border-[#D5DEEF] bg-gray-100 pl-12 pr-4 text-sm text-gray-500 outline-none"
+                    className="h-14 w-full cursor-not-allowed rounded-xl border border-[#D5E2F7] bg-slate-100 pl-12 pr-4 text-sm text-[#64748B] outline-none"
                   />
+                </InputWrapper>
 
-                </div>
-
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-[#64748B]">
                   Your company email cannot be
                   changed here.
                 </p>
@@ -809,13 +841,9 @@ export default function SettingsContent() {
                   Department
                 </label>
 
-                <div className="relative">
-
-                  <Building2
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-[#10275F]/60"
-                  />
-
+                <InputWrapper
+                  icon={<Building2 size={18} />}
+                >
                   <input
                     id="department"
                     type="text"
@@ -829,10 +857,9 @@ export default function SettingsContent() {
                       )
                     }
                     placeholder="e.g. Engineering"
-                    className="h-14 w-full rounded-xl border border-[#D5DEEF] bg-[#F8FAFD] pl-12 pr-4 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 focus:border-[#10275F] focus:bg-white focus:ring-4 focus:ring-[#10275F]/5"
+                    className="h-14 w-full rounded-xl border border-[#D5E2F7] bg-[#F6F9FF] pl-12 pr-4 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 hover:border-[#B8CCEC] focus:border-[#1D55B8] focus:bg-white focus:ring-4 focus:ring-[#1D55B8]/10"
                   />
-
-                </div>
+                </InputWrapper>
 
               </div>
 
@@ -857,10 +884,10 @@ export default function SettingsContent() {
                       : "Employee"
                   }
                   disabled
-                  className="h-14 w-full cursor-not-allowed rounded-xl border border-[#D5DEEF] bg-gray-100 px-4 text-sm text-gray-500 outline-none"
+                  className="h-14 w-full cursor-not-allowed rounded-xl border border-[#D5E2F7] bg-slate-100 px-4 text-sm text-[#64748B] outline-none"
                 />
 
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-[#64748B]">
                   Your role can only be changed
                   by an administrator.
                 </p>
@@ -875,33 +902,17 @@ export default function SettingsContent() {
               BOOKING PREFERENCES
           ================================================= */}
 
-          <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
 
-            <div className="border-b border-gray-100 px-6 py-5 md:px-7">
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
-                  <CalendarDays
-                    size={20}
-                    className="text-[#10275F]"
-                  />
-                </div>
-
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Booking Preferences
-                  </h2>
-
-                  <p className="text-sm text-gray-500">
-                    Customize your default booking
-                    experience.
-                  </p>
-                </div>
-
-              </div>
-
-            </div>
+            <SectionHeader
+              icon={
+                <CalendarDays
+                  size={20}
+                />
+              }
+              title="Booking Preferences"
+              description="Customize your default booking experience."
+            />
 
             <div className="grid gap-5 p-6 md:grid-cols-3 md:p-7">
 
@@ -916,13 +927,9 @@ export default function SettingsContent() {
                   Default Location
                 </label>
 
-                <div className="relative">
-
-                  <MapPin
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-[#10275F]/60"
-                  />
-
+                <InputWrapper
+                  icon={<MapPin size={18} />}
+                >
                   <input
                     id="defaultLocation"
                     type="text"
@@ -936,10 +943,9 @@ export default function SettingsContent() {
                       )
                     }
                     placeholder="Main Office"
-                    className="h-14 w-full rounded-xl border border-[#D5DEEF] bg-[#F8FAFD] pl-12 pr-4 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 focus:border-[#10275F] focus:bg-white focus:ring-4 focus:ring-[#10275F]/5"
+                    className="h-14 w-full rounded-xl border border-[#D5E2F7] bg-[#F6F9FF] pl-12 pr-4 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 hover:border-[#B8CCEC] focus:border-[#1D55B8] focus:bg-white focus:ring-4 focus:ring-[#1D55B8]/10"
                   />
-
-                </div>
+                </InputWrapper>
 
               </div>
 
@@ -966,7 +972,7 @@ export default function SettingsContent() {
                         .value as CalendarView
                     )
                   }
-                  className="h-14 w-full rounded-xl border border-[#D5DEEF] bg-[#F8FAFD] px-4 text-sm text-[#10275F] outline-none transition focus:border-[#10275F] focus:bg-white focus:ring-4 focus:ring-[#10275F]/5"
+                  className="h-14 w-full rounded-xl border border-[#D5E2F7] bg-[#F6F9FF] px-4 text-sm font-medium text-[#10275F] outline-none transition hover:border-[#B8CCEC] focus:border-[#1D55B8] focus:bg-white focus:ring-4 focus:ring-[#1D55B8]/10"
                 >
                   <option value="DAY">
                     Day
@@ -1005,7 +1011,7 @@ export default function SettingsContent() {
                       event.target.value
                     )
                   }
-                  className="h-14 w-full rounded-xl border border-[#D5DEEF] bg-[#F8FAFD] px-4 text-sm text-[#10275F] outline-none transition focus:border-[#10275F] focus:bg-white focus:ring-4 focus:ring-[#10275F]/5"
+                  className="h-14 w-full rounded-xl border border-[#D5E2F7] bg-[#F6F9FF] px-4 text-sm font-medium text-[#10275F] outline-none transition hover:border-[#B8CCEC] focus:border-[#1D55B8] focus:bg-white focus:ring-4 focus:ring-[#1D55B8]/10"
                 >
                   <option>
                     15 minutes
@@ -1042,47 +1048,30 @@ export default function SettingsContent() {
               NOTIFICATIONS
           ================================================= */}
 
-          <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
 
-            <div className="border-b border-gray-100 px-6 py-5 md:px-7">
+            <SectionHeader
+              icon={
+                <Bell size={20} />
+              }
+              title="Notifications"
+              description="Choose which booking notifications you receive."
+              iconClassName="bg-[#EEF4FF] text-[#1D55B8]"
+            />
 
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50">
-                  <Bell
-                    size={20}
-                    className="text-amber-600"
-                  />
-                </div>
-
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Notifications
-                  </h2>
-
-                  <p className="text-sm text-gray-500">
-                    Choose which booking notifications
-                    you receive.
-                  </p>
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-[#E5ECF7]">
 
               {/* Confirmation */}
 
-              <label className="flex cursor-pointer items-center justify-between gap-5 px-6 py-5 md:px-7">
+              <label className="flex cursor-pointer items-center justify-between gap-5 px-6 py-5 transition hover:bg-[#F8FAFF] md:px-7">
 
-                <div>
+                <div className="min-w-0">
 
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-semibold text-[#10275F]">
                     Booking Confirmation
                   </p>
 
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-[#64748B]">
                     Receive a notification when a
                     booking is successfully created.
                   </p>
@@ -1100,22 +1089,22 @@ export default function SettingsContent() {
                       event.target.checked
                     )
                   }
-                  className="h-5 w-5 accent-[#10275F]"
+                  className="h-5 w-5 shrink-0 cursor-pointer accent-[#1D55B8]"
                 />
 
               </label>
 
               {/* Cancellation */}
 
-              <label className="flex cursor-pointer items-center justify-between gap-5 px-6 py-5 md:px-7">
+              <label className="flex cursor-pointer items-center justify-between gap-5 px-6 py-5 transition hover:bg-[#F8FAFF] md:px-7">
 
-                <div>
+                <div className="min-w-0">
 
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-semibold text-[#10275F]">
                     Booking Cancellation
                   </p>
 
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-[#64748B]">
                     Receive a notification when a
                     booking is cancelled.
                   </p>
@@ -1133,22 +1122,22 @@ export default function SettingsContent() {
                       event.target.checked
                     )
                   }
-                  className="h-5 w-5 accent-[#10275F]"
+                  className="h-5 w-5 shrink-0 cursor-pointer accent-[#1D55B8]"
                 />
 
               </label>
 
               {/* Reminder */}
 
-              <label className="flex cursor-pointer items-center justify-between gap-5 px-6 py-5 md:px-7">
+              <label className="flex cursor-pointer items-center justify-between gap-5 px-6 py-5 transition hover:bg-[#F8FAFF] md:px-7">
 
-                <div>
+                <div className="min-w-0">
 
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-semibold text-[#10275F]">
                     Booking Reminder
                   </p>
 
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-[#64748B]">
                     Receive reminders before your
                     upcoming meetings.
                   </p>
@@ -1166,7 +1155,7 @@ export default function SettingsContent() {
                       event.target.checked
                     )
                   }
-                  className="h-5 w-5 accent-[#10275F]"
+                  className="h-5 w-5 shrink-0 cursor-pointer accent-[#1D55B8]"
                 />
 
               </label>
@@ -1179,44 +1168,45 @@ export default function SettingsContent() {
               SECURITY
           ================================================= */}
 
-          <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
 
-            <div className="border-b border-gray-100 px-6 py-5 md:px-7">
+            <SectionHeader
+              icon={
+                <Lock size={20} />
+              }
+              title="Security"
+              description="Manage your account security."
+              iconClassName="bg-[#F6F9FF] text-[#10275F]"
+            />
 
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-4 p-6 md:p-7">
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                  <Lock
-                    size={20}
-                    className="text-gray-700"
-                  />
-                </div>
+              <div>
 
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Security
-                  </h2>
+                <p className="text-sm font-semibold text-[#10275F]">
+                  Password
+                </p>
 
-                  <p className="text-sm text-gray-500">
-                    Manage your account security.
-                  </p>
-                </div>
+                <p className="mt-1 text-sm text-[#64748B]">
+                  Change your account password regularly
+                  to keep your account secure.
+                </p>
 
               </div>
 
-            </div>
+              <div>
 
-            <div className="p-6 md:p-7">
+                <button
+                  type="button"
+                  onClick={
+                    openPasswordModal
+                  }
+                  className="rounded-xl border border-[#D5E2F7] bg-white px-5 py-3 text-sm font-semibold text-[#10275F] transition hover:border-[#B8CCEC] hover:bg-[#EEF4FF] hover:text-[#1D55B8]"
+                >
+                  Change Password
+                </button>
 
-              <button
-                type="button"
-                onClick={
-                  openPasswordModal
-                }
-                className="rounded-xl border border-[#D5DEEF] px-5 py-3 text-sm font-semibold text-[#10275F] transition hover:bg-[#F8FAFD]"
-              >
-                Change Password
-              </button>
+              </div>
 
             </div>
 
@@ -1226,12 +1216,12 @@ export default function SettingsContent() {
               ACTIONS
           ================================================= */}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 pb-6 sm:flex-row sm:items-center sm:justify-between">
 
             <button
               type="button"
               onClick={handleLogout}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-red-200 px-5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#F5B9B5] bg-white px-5 text-sm font-semibold text-[#E83B32] transition hover:bg-[#FFF3F2]"
             >
               <LogOut size={18} />
 
@@ -1242,8 +1232,27 @@ export default function SettingsContent() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#10275F] px-7 text-sm font-bold text-white shadow-lg shadow-[#10275F]/20 transition hover:bg-[#0B2151] disabled:cursor-not-allowed disabled:opacity-60"
+              className="
+                flex
+                h-12
+                items-center
+                justify-center
+                gap-2
+                rounded-xl
+                bg-[#102D72]
+                px-7
+                text-sm
+                font-bold
+                text-white
+                shadow-lg
+                shadow-[#102D72]/20
+                transition
+                hover:bg-[#0C245C]
+                disabled:cursor-not-allowed
+                disabled:opacity-60
+              "
             >
+
               {saving ? (
                 <>
                   <Loader2
@@ -1266,6 +1275,7 @@ export default function SettingsContent() {
                   Save Changes
                 </>
               )}
+
             </button>
 
           </div>
@@ -1280,7 +1290,7 @@ export default function SettingsContent() {
 
       {showPasswordModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#071B45]/60 px-4 backdrop-blur-sm"
           onMouseDown={(event) => {
             if (
               event.target ===
@@ -1292,7 +1302,7 @@ export default function SettingsContent() {
         >
 
           <div
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl md:p-7"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#D5E2F7] bg-white p-6 shadow-2xl md:p-7"
             onMouseDown={(event) =>
               event.stopPropagation()
             }
@@ -1304,18 +1314,15 @@ export default function SettingsContent() {
 
               <div>
 
-                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
-                  <Lock
-                    size={21}
-                    className="text-[#10275F]"
-                  />
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+                  <Lock size={21} />
                 </div>
 
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-xl font-bold text-[#10275F]">
                   Change Password
                 </h2>
 
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-[#64748B]">
                   Update your account password.
                 </p>
 
@@ -1328,7 +1335,7 @@ export default function SettingsContent() {
                 }
                 disabled={passwordLoading}
                 aria-label="Close"
-                className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg p-2 text-[#64748B] transition hover:bg-[#EEF4FF] hover:text-[#10275F] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <X size={20} />
               </button>
@@ -1377,14 +1384,15 @@ export default function SettingsContent() {
                     disabled={
                       passwordLoading
                     }
-                    className="h-13 w-full rounded-xl border border-[#D5DEEF] bg-[#F8FAFD] px-4 pr-12 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 focus:border-[#10275F] focus:bg-white focus:ring-4 focus:ring-[#10275F]/5 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-13 w-full rounded-xl border border-[#D5E2F7] bg-[#F6F9FF] px-4 pr-12 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 hover:border-[#B8CCEC] focus:border-[#1D55B8] focus:bg-white focus:ring-4 focus:ring-[#1D55B8]/10 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
                   <button
                     type="button"
                     onClick={() =>
                       setShowCurrentPassword(
-                        (value) => !value
+                        (value) =>
+                          !value
                       )
                     }
                     disabled={
@@ -1395,7 +1403,7 @@ export default function SettingsContent() {
                         ? "Hide current password"
                         : "Show current password"
                     }
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-[#64748B] transition hover:bg-[#EEF4FF] hover:text-[#10275F] disabled:opacity-50"
                   >
                     {showCurrentPassword ? (
                       <EyeOff
@@ -1441,14 +1449,15 @@ export default function SettingsContent() {
                     disabled={
                       passwordLoading
                     }
-                    className="h-13 w-full rounded-xl border border-[#D5DEEF] bg-[#F8FAFD] px-4 pr-12 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 focus:border-[#10275F] focus:bg-white focus:ring-4 focus:ring-[#10275F]/5 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-13 w-full rounded-xl border border-[#D5E2F7] bg-[#F6F9FF] px-4 pr-12 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 hover:border-[#B8CCEC] focus:border-[#1D55B8] focus:bg-white focus:ring-4 focus:ring-[#1D55B8]/10 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
                   <button
                     type="button"
                     onClick={() =>
                       setShowNewPassword(
-                        (value) => !value
+                        (value) =>
+                          !value
                       )
                     }
                     disabled={
@@ -1459,7 +1468,7 @@ export default function SettingsContent() {
                         ? "Hide new password"
                         : "Show new password"
                     }
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-[#64748B] transition hover:bg-[#EEF4FF] hover:text-[#10275F] disabled:opacity-50"
                   >
                     {showNewPassword ? (
                       <EyeOff
@@ -1472,7 +1481,7 @@ export default function SettingsContent() {
 
                 </div>
 
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-[#64748B]">
                   Password must contain 8 to 128
                   characters.
                 </p>
@@ -1512,14 +1521,15 @@ export default function SettingsContent() {
                     disabled={
                       passwordLoading
                     }
-                    className="h-13 w-full rounded-xl border border-[#D5DEEF] bg-[#F8FAFD] px-4 pr-12 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 focus:border-[#10275F] focus:bg-white focus:ring-4 focus:ring-[#10275F]/5 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-13 w-full rounded-xl border border-[#D5E2F7] bg-[#F6F9FF] px-4 pr-12 text-sm text-[#10275F] outline-none transition placeholder:text-slate-400 hover:border-[#B8CCEC] focus:border-[#1D55B8] focus:bg-white focus:ring-4 focus:ring-[#1D55B8]/10 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
                   <button
                     type="button"
                     onClick={() =>
                       setShowConfirmPassword(
-                        (value) => !value
+                        (value) =>
+                          !value
                       )
                     }
                     disabled={
@@ -1530,7 +1540,7 @@ export default function SettingsContent() {
                         ? "Hide confirmation password"
                         : "Show confirmation password"
                     }
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-[#64748B] transition hover:bg-[#EEF4FF] hover:text-[#10275F] disabled:opacity-50"
                   >
                     {showConfirmPassword ? (
                       <EyeOff
@@ -1545,7 +1555,7 @@ export default function SettingsContent() {
 
               </div>
 
-              {/* Error */}
+              {/* Password Error */}
 
               {passwordError && (
                 <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1562,10 +1572,10 @@ export default function SettingsContent() {
                 </div>
               )}
 
-              {/* Success */}
+              {/* Password Success */}
 
               {passwordSuccess && (
-                <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-[#EEF4FF] px-4 py-3 text-sm text-[#17438F]">
 
                   <Check
                     size={18}
@@ -1591,7 +1601,7 @@ export default function SettingsContent() {
                   disabled={
                     passwordLoading
                   }
-                  className="h-12 rounded-xl border border-[#D5DEEF] px-5 text-sm font-semibold text-[#10275F] transition hover:bg-[#F8FAFD] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-12 rounded-xl border border-[#D5E2F7] px-5 text-sm font-semibold text-[#10275F] transition hover:bg-[#EEF4FF] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1601,7 +1611,7 @@ export default function SettingsContent() {
                   disabled={
                     passwordLoading
                   }
-                  className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#10275F] px-5 text-sm font-bold text-white shadow-lg shadow-[#10275F]/20 transition hover:bg-[#0B2151] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#102D72] px-5 text-sm font-bold text-white shadow-lg shadow-[#102D72]/20 transition hover:bg-[#0C245C] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {passwordLoading ? (
                     <>

@@ -71,11 +71,17 @@ export default function NotificationBell() {
   const [open, setOpen] =
     useState(false);
 
-  const [notifications, setNotifications] =
-    useState<NotificationItem[]>([]);
+  const [
+    notifications,
+    setNotifications,
+  ] = useState<NotificationItem[]>(
+    []
+  );
 
-  const [unreadCount, setUnreadCount] =
-    useState(0);
+  const [
+    unreadCount,
+    setUnreadCount,
+  ] = useState(0);
 
   const [loading, setLoading] =
     useState(false);
@@ -97,13 +103,14 @@ export default function NotificationBell() {
       setLoading(true);
       setError("");
 
-      const response = await fetch(
-        `${API_URL}/api/notifications`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
+      const response =
+        await fetch(
+          `${API_URL}/api/notifications`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
 
       const result: NotificationsResponse =
         await response.json();
@@ -353,13 +360,19 @@ export default function NotificationBell() {
     );
   }
 
+  /* ===================================================
+     RENDER
+  =================================================== */
+
   return (
     <div
       ref={containerRef}
       className="relative"
     >
 
-      {/* Bell */}
+      {/* =================================================
+          BELL
+      ================================================= */}
 
       <button
         type="button"
@@ -372,41 +385,107 @@ export default function NotificationBell() {
             fetchNotifications();
           }
         }}
-        className="relative rounded-xl p-2.5 text-gray-600 transition hover:bg-gray-100 hover:text-[#10275F]"
+        className="
+          relative
+          rounded-xl
+          p-2.5
+          text-[#64748B]
+          transition
+          hover:bg-[#EEF4FF]
+          hover:text-[#10275F]
+          focus:outline-none
+          focus:ring-2
+          focus:ring-[#10275F]/20
+        "
         aria-label="Notifications"
       >
-
         <Bell size={21} />
 
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#E83B32] px-1 text-[10px] font-bold text-white">
+          <span
+            className="
+              absolute
+              -right-0.5
+              -top-0.5
+              flex
+              min-h-5
+              min-w-5
+              items-center
+              justify-center
+              rounded-full
+              bg-[#E83B32]
+              px-1
+              text-[10px]
+              font-bold
+              text-white
+            "
+          >
             {unreadCount > 99
               ? "99+"
               : unreadCount}
           </span>
         )}
-
       </button>
 
-      {/* Dropdown */}
+      {/* =================================================
+          DROPDOWN
+      ================================================= */}
 
       {open && (
-        <div className="absolute right-0 top-14 z-50 w-[360px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        <div
+          className="
+            absolute
+            right-0
+            top-14
+            z-50
+            w-[360px]
+            overflow-hidden
+            rounded-2xl
+            border
+            border-[#D5E2F7]
+            bg-white
+            shadow-2xl
+          "
+        >
 
-          {/* Header */}
+          {/* =================================================
+              HEADER
+          ================================================= */}
 
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
-
+          <div
+            className="
+              flex
+              items-center
+              justify-between
+              border-b
+              border-[#D5E2F7]
+              bg-white
+              px-4
+              py-4
+            "
+          >
             <div>
-              <h3 className="font-bold text-gray-900">
+
+              <h3
+                className="
+                  font-bold
+                  text-[#10275F]
+                "
+              >
                 Notifications
               </h3>
 
-              <p className="text-xs text-gray-500">
+              <p
+                className="
+                  text-xs
+                  text-[#64748B]
+                "
+              >
                 {unreadCount > 0
                   ? `${unreadCount} unread`
                   : "You're all caught up"}
               </p>
+
             </div>
 
             {unreadCount > 0 && (
@@ -415,7 +494,14 @@ export default function NotificationBell() {
                 onClick={
                   markAllAsRead
                 }
-                className="text-xs font-semibold text-[#10275F] hover:underline"
+                className="
+                  text-xs
+                  font-semibold
+                  text-[#1D4ED8]
+                  transition
+                  hover:text-[#1742B5]
+                  hover:underline
+                "
               >
                 Mark all read
               </button>
@@ -423,83 +509,187 @@ export default function NotificationBell() {
 
           </div>
 
-          {/* Content */}
+          {/* =================================================
+              CONTENT
+          ================================================= */}
 
-          <div className="max-h-[420px] overflow-y-auto">
+          <div
+            className="
+              max-h-[420px]
+              overflow-y-auto
+            "
+          >
+
+            {/* =================================================
+                LOADING
+            ================================================= */}
 
             {loading ? (
-              <div className="flex items-center justify-center py-10">
+              <div
+                className="
+                  flex
+                  items-center
+                  justify-center
+                  py-10
+                "
+              >
                 <Loader2
                   size={24}
-                  className="animate-spin text-[#10275F]"
+                  className="
+                    animate-spin
+                    text-[#10275F]
+                  "
                 />
               </div>
+
             ) : error ? (
-              <div className="px-5 py-8 text-center text-sm text-red-600">
+
+              /* =================================================
+                  ERROR
+              ================================================= */
+
+              <div
+                className="
+                  px-5
+                  py-8
+                  text-center
+                  text-sm
+                  text-[#E83B32]
+                "
+              >
                 {error}
               </div>
+
             ) : notifications.length ===
               0 ? (
-              <div className="px-5 py-10 text-center">
+
+              /* =================================================
+                  EMPTY
+              ================================================= */
+
+              <div
+                className="
+                  px-5
+                  py-10
+                  text-center
+                "
+              >
 
                 <Bell
                   size={30}
-                  className="mx-auto text-gray-300"
+                  className="
+                    mx-auto
+                    text-[#B7C9E6]
+                  "
                 />
 
-                <p className="mt-3 font-semibold text-gray-700">
+                <p
+                  className="
+                    mt-3
+                    font-semibold
+                    text-[#10275F]
+                  "
+                >
                   No notifications
                 </p>
 
-                <p className="mt-1 text-xs text-gray-500">
-                  New booking updates will appear here.
+                <p
+                  className="
+                    mt-1
+                    text-xs
+                    text-[#64748B]
+                  "
+                >
+                  New booking updates will
+                  appear here.
                 </p>
 
               </div>
+
             ) : (
+
+              /* =================================================
+                  NOTIFICATIONS
+              ================================================= */
+
               notifications.map(
                 (notification) => (
                   <div
                     key={
                       notification._id
                     }
-                    className={`border-b border-gray-100 px-4 py-4 transition ${
-                      notification.isRead
-                        ? "bg-white"
-                        : "bg-blue-50/50"
-                    }`}
+                    className={`
+                      border-b
+                      border-[#D5E2F7]
+                      px-4
+                      py-4
+                      transition
+                      ${
+                        notification.isRead
+                          ? "bg-white"
+                          : "bg-[#EEF4FF]"
+                      }
+                    `}
                   >
 
                     <div className="flex gap-3">
 
-                      {/* Status */}
+                      {/* =================================================
+                          STATUS ICON
+                      ================================================= */}
 
                       <div
-                        className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                          notification.type ===
-                          "BOOKING_CANCELLED"
-                            ? "bg-red-100 text-red-600"
-                            : "bg-blue-100 text-[#10275F]"
-                        }`}
+                        className={`
+                          mt-1
+                          flex
+                          h-8
+                          w-8
+                          shrink-0
+                          items-center
+                          justify-center
+                          rounded-full
+                          ${
+                            notification.type ===
+                            "BOOKING_CANCELLED"
+                              ? "bg-red-100 text-[#E83B32]"
+                              : "bg-[#DCE8FF] text-[#10275F]"
+                          }
+                        `}
                       >
+
                         {notification.type ===
                         "BOOKING_CANCELLED" ? (
                           <X size={15} />
                         ) : (
                           <Check size={15} />
                         )}
+
                       </div>
 
                       <div className="min-w-0 flex-1">
 
-                        <div className="flex items-start justify-between gap-2">
+                        {/* =================================================
+                            TITLE + DELETE
+                        ================================================= */}
+
+                        <div
+                          className="
+                            flex
+                            items-start
+                            justify-between
+                            gap-2
+                          "
+                        >
 
                           <p
-                            className={`text-sm ${
-                              notification.isRead
-                                ? "font-semibold text-gray-700"
-                                : "font-bold text-gray-900"
-                            }`}
+                            className={`
+                              text-sm
+                              ${
+                                notification.isRead
+                                  ? "font-semibold text-[#475569]"
+                                  : "font-bold text-[#10275F]"
+                              }
+                            `}
                           >
                             {
                               notification.title
@@ -513,7 +703,12 @@ export default function NotificationBell() {
                                 notification._id
                               )
                             }
-                            className="shrink-0 text-gray-300 hover:text-red-500"
+                            className="
+                              shrink-0
+                              text-[#B7C9E6]
+                              transition
+                              hover:text-[#E83B32]
+                            "
                             aria-label="Delete notification"
                           >
                             <X size={15} />
@@ -521,15 +716,42 @@ export default function NotificationBell() {
 
                         </div>
 
-                        <p className="mt-1 text-xs leading-5 text-gray-500">
+                        {/* =================================================
+                            MESSAGE
+                        ================================================= */}
+
+                        <p
+                          className="
+                            mt-1
+                            text-xs
+                            leading-5
+                            text-[#64748B]
+                          "
+                        >
                           {
                             notification.message
                           }
                         </p>
 
-                        <div className="mt-2 flex items-center justify-between">
+                        {/* =================================================
+                            DATE + MARK READ
+                        ================================================= */}
 
-                          <span className="text-[10px] text-gray-400">
+                        <div
+                          className="
+                            mt-2
+                            flex
+                            items-center
+                            justify-between
+                          "
+                        >
+
+                          <span
+                            className="
+                              text-[10px]
+                              text-[#94A3B8]
+                            "
+                          >
                             {formatDate(
                               notification.createdAt
                             )}
@@ -543,7 +765,14 @@ export default function NotificationBell() {
                                   notification._id
                                 )
                               }
-                              className="text-[11px] font-semibold text-[#10275F] hover:underline"
+                              className="
+                                text-[11px]
+                                font-semibold
+                                text-[#1D4ED8]
+                                transition
+                                hover:text-[#1742B5]
+                                hover:underline
+                              "
                             >
                               Mark read
                             </button>

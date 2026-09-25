@@ -42,14 +42,21 @@ const updateMyProfileSchema = z.object({
   defaultDuration: z
     .number()
     .int()
-    .min(15, "Duration must be at least 15 minutes")
-    .max(480, "Duration cannot exceed 480 minutes")
+    .min(
+      15,
+      "Duration must be at least 15 minutes"
+    )
+    .max(
+      480,
+      "Duration cannot exceed 480 minutes"
+    )
     .optional(),
 
   /*
    * IMPORTANT:
    * User.ts uses uppercase values.
    */
+
   calendarView: z
     .enum(["DAY", "WEEK", "MONTH"])
     .optional(),
@@ -169,6 +176,7 @@ export async function getMyProfile(
          * Keep the complete Monday-Sunday
          * working-hours structure.
          */
+
         workingHours:
           user.workingHours,
 
@@ -365,11 +373,9 @@ export async function updateMyProfile(
     const user =
       await User.findByIdAndUpdate(
         req.user.userId,
-
         {
           $set: update,
         },
-
         {
           new: true,
           runValidators: true,
@@ -429,6 +435,7 @@ export async function updateMyProfile(
          * Return the complete working-hours
          * structure from MongoDB.
          */
+
         workingHours:
           user.workingHours,
 
@@ -656,6 +663,297 @@ export async function updateUserRole(
   } catch (error) {
     console.error(
       "Update user role error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+}
+
+/* =====================================================
+   UPDATE USER EMAIL
+   ADMIN ONLY
+===================================================== */
+
+export async function updateUserEmail(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    /* -------------------------------------------------
+       Authentication check
+    ------------------------------------------------- */
+
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    /* -------------------------------------------------
+       Validate user ID
+    ------------------------------------------------- */
+
+    const id: unknown =
+      req.params.id;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
+    /* -------------------------------------------------
+       Validate email
+    ------------------------------------------------- */
+
+    const email =
+      typeof req.body?.email === "string"
+        ? req.body.email
+            .trim()
+            .toLowerCase()
+        : "";
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Email address is required",
+      });
+    }
+
+    /* -------------------------------------------------
+       Basic email validation
+    ------------------------------------------------- */
+
+    const emailRegex =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Please enter a valid email address",
+      });
+    }
+
+    /* -------------------------------------------------
+       Company email validation
+    ------------------------------------------------- */
+
+    if (
+      !email.endsWith("@dangote.com")
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only @dangote.com email addresses are allowed",
+      });
+    }
+
+    /* -------------------------------------------------
+       Find target user
+    ------------------------------------------------- */
+
+    const targetUser =
+      await User.findById(id);
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    /* -------------------------------------------------
+       Prevent unnecessary update
+    ------------------------------------------------- */
+
+    if (
+      targetUser.email.toLowerCase() ===
+      email
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "The new email is the same as the current email",
+      });
+    }
+
+    /* -------------------------------------------------
+       Check duplicate email
+    ------------------------------------------------- */
+
+    const existingUser =
+      await User.findOne({
+        email,
+        _id: {
+          $ne: id,
+        },
+      });
+
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "This email address is already registered",
+      });
+    }
+
+    /* -------------------------------------------------
+       Update email
+    ------------------------------------------------- */
+
+    targetUser.email = email;
+
+    await targetUser.save();
+
+    /* -------------------------------------------------
+       Response
+    ------------------------------------------------- */
+
+    return res.status(200).json({
+      success: true,
+
+      message:
+        "User email updated successfully",
+
+      user: {
+        id: targetUser._id,
+
+        name: targetUser.name,
+
+        email: targetUser.email,
+
+        department:
+          targetUser.department,
+
+        role: targetUser.role,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Update user email error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Something went wrong",
+    });
+  }
+}
+
+/* =====================================================
+   DELETE USER
+   ADMIN ONLY
+===================================================== */
+
+export async function deleteUser(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    /* -------------------------------------------------
+       Authentication check
+    ------------------------------------------------- */
+
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    /* -------------------------------------------------
+       Validate user ID
+    ------------------------------------------------- */
+
+    const id: unknown =
+      req.params.id;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
+    /* -------------------------------------------------
+       Find target user
+    ------------------------------------------------- */
+
+    const targetUser =
+      await User.findById(id);
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    /* -------------------------------------------------
+       Prevent admin from deleting themselves
+    ------------------------------------------------- */
+
+    if (
+      req.user.userId ===
+      targetUser._id.toString()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You cannot delete your own account",
+      });
+    }
+
+    /* -------------------------------------------------
+       Prevent deletion of the last administrator
+    ------------------------------------------------- */
+
+    if (
+      targetUser.role === "ADMIN"
+    ) {
+      const adminCount =
+        await User.countDocuments({
+          role: "ADMIN",
+        });
+
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "At least one administrator must remain",
+        });
+      }
+    }
+
+    /* -------------------------------------------------
+       Delete user
+    ------------------------------------------------- */
+
+    await User.findByIdAndDelete(id);
+
+    /* -------------------------------------------------
+       Response
+    ------------------------------------------------- */
+
+    return res.status(200).json({
+      success: true,
+
+      message:
+        `${targetUser.name} was deleted successfully`,
+    });
+  } catch (error) {
+    console.error(
+      "Delete user error:",
       error
     );
 

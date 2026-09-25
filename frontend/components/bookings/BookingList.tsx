@@ -199,16 +199,16 @@ export default function BookingList() {
   ) {
     switch (status) {
       case "UPCOMING":
-        return "bg-emerald-50 text-emerald-700";
+        return "border border-emerald-200 bg-emerald-50 text-emerald-700";
 
       case "CANCELLED":
-        return "bg-red-50 text-red-600";
+        return "border border-red-200 bg-red-50 text-red-600";
 
       case "COMPLETED":
-        return "bg-gray-100 text-gray-600";
+        return "border border-slate-200 bg-slate-100 text-slate-600";
 
       default:
-        return "bg-gray-100 text-gray-600";
+        return "border border-slate-200 bg-slate-100 text-slate-600";
     }
   }
 
@@ -217,7 +217,7 @@ export default function BookingList() {
   ===================================================== */
 
   return (
-    <div className="min-h-screen p-5 md:p-8 lg:p-10">
+    <div className="min-h-screen bg-[#EEF4FF] p-5 md:p-8 lg:p-10">
 
       {/* =================================================
           HEADER
@@ -226,15 +226,15 @@ export default function BookingList() {
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 
         <div>
-          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-rose-600">
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#E83B32]">
             Reservations
           </p>
 
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight text-[#10275F] md:text-4xl">
             My Bookings
           </h1>
 
-          <p className="mt-2 text-gray-600">
+          <p className="mt-2 text-[#64748B]">
             Manage your conference room reservations.
           </p>
         </div>
@@ -244,7 +244,7 @@ export default function BookingList() {
           type="button"
           onClick={fetchBookings}
           disabled={isLoading}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D5E2F7] bg-white px-4 py-3 text-sm font-bold text-[#10275F] shadow-sm transition hover:border-[#B8CCEC] hover:bg-[#F6F9FF] hover:text-[#1D55B8] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RefreshCw
             size={17}
@@ -271,13 +271,13 @@ export default function BookingList() {
       ================================================= */}
 
       {isLoading ? (
-        <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
 
-          <div className="flex flex-col items-center gap-3 text-gray-500">
+          <div className="flex flex-col items-center gap-3 text-[#64748B]">
 
             <Loader2
               size={32}
-              className="animate-spin"
+              className="animate-spin text-[#1D55B8]"
             />
 
             <p className="text-sm font-medium">
@@ -293,18 +293,20 @@ export default function BookingList() {
            EMPTY STATE
         ================================================= */
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
+        <div className="rounded-2xl border border-[#D5E2F7] bg-white p-10 text-center shadow-sm">
 
-          <CalendarDays
-            size={42}
-            className="mx-auto text-gray-300"
-          />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#EEF4FF]">
+            <CalendarDays
+              size={32}
+              className="text-[#1D55B8]"
+            />
+          </div>
 
-          <h2 className="mt-4 text-xl font-bold text-gray-900">
+          <h2 className="mt-5 text-xl font-bold text-[#10275F]">
             No Bookings Yet
           </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-[#64748B]">
             You don't have any conference room
             bookings yet.
           </p>
@@ -322,102 +324,118 @@ export default function BookingList() {
 
             <div
               key={booking._id}
-              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md"
+              className="overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm transition hover:border-[#B8CCEC] hover:shadow-md"
             >
 
-              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              {/* Top accent */}
+              <div className="h-1 bg-[#102D72]" />
 
-                {/* =========================================
-                    BOOKING INFORMATION
-                ========================================= */}
+              <div className="p-6">
 
-                <div className="min-w-0">
+                <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
 
-                  {/* Title + Status */}
+                  {/* =========================================
+                      BOOKING INFORMATION
+                  ========================================= */}
 
-                  <div className="mb-2 flex flex-wrap items-center gap-3">
+                  <div className="min-w-0">
 
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {booking.title}
-                    </h2>
+                    {/* Title + Status */}
 
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(
-                        booking.status
-                      )}`}
-                    >
-                      {booking.status}
-                    </span>
+                    <div className="mb-2 flex flex-wrap items-center gap-3">
 
-                  </div>
+                      <h2 className="text-xl font-bold text-[#10275F]">
+                        {booking.title}
+                      </h2>
 
-                  {/* Room */}
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(
+                          booking.status
+                        )}`}
+                      >
+                        {booking.status}
+                      </span>
 
-                  <p className="font-semibold text-gray-700">
-                    {booking.room?.name ||
-                      "Conference Room"}
-                  </p>
+                    </div>
 
-                  {/* Date / Time / Location */}
+                    {/* Room */}
 
-                  <div className="mt-4 flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:flex-wrap sm:gap-6">
-
-                    <span className="flex items-center gap-2">
-                      <CalendarDays size={16} />
-
-                      {formatBookingDate(
-                        booking.date
-                      )}
-                    </span>
-
-                    <span className="flex items-center gap-2">
-                      <Clock size={16} />
-
-                      {formatBookingTime(
-                        booking.startTime
-                      )}
-
-                      {" - "}
-
-                      {formatBookingTime(
-                        booking.endTime
-                      )}
-                    </span>
-
-                    <span className="flex items-center gap-2">
-                      <MapPin size={16} />
-
-                      {booking.room?.location ||
-                        "Main Office"}
-                    </span>
-
-                  </div>
-
-                  {/* Description */}
-
-                  {booking.description && (
-                    <p className="mt-4 max-w-2xl text-sm text-gray-500">
-                      {booking.description}
+                    <p className="font-semibold text-[#1D55B8]">
+                      {booking.room?.name ||
+                        "Conference Room"}
                     </p>
+
+                    {/* Date / Time / Location */}
+
+                    <div className="mt-4 flex flex-col gap-3 text-sm text-[#64748B] sm:flex-row sm:flex-wrap sm:gap-6">
+
+                      <span className="flex items-center gap-2">
+                        <CalendarDays
+                          size={16}
+                          className="shrink-0 text-[#1D55B8]"
+                        />
+
+                        {formatBookingDate(
+                          booking.date
+                        )}
+                      </span>
+
+                      <span className="flex items-center gap-2">
+                        <Clock
+                          size={16}
+                          className="shrink-0 text-[#1D55B8]"
+                        />
+
+                        {formatBookingTime(
+                          booking.startTime
+                        )}
+
+                        {" - "}
+
+                        {formatBookingTime(
+                          booking.endTime
+                        )}
+                      </span>
+
+                      <span className="flex items-center gap-2">
+                        <MapPin
+                          size={16}
+                          className="shrink-0 text-[#1D55B8]"
+                        />
+
+                        {booking.room?.location ||
+                          "Main Office"}
+                      </span>
+
+                    </div>
+
+                    {/* Description */}
+
+                    {booking.description && (
+                      <p className="mt-4 max-w-2xl text-sm leading-6 text-[#64748B]">
+                        {booking.description}
+                      </p>
+                    )}
+
+                  </div>
+
+                  {/* =========================================
+                      CANCEL BUTTON
+                  ========================================= */}
+
+                  {booking.status === "UPCOMING" && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBookingToCancel(booking)
+                      }
+                      className="shrink-0 rounded-xl border border-red-200 px-5 py-3 text-sm font-bold text-[#E83B32] transition hover:bg-red-50 hover:border-red-300"
+                    >
+                      Cancel Booking
+                    </button>
                   )}
 
                 </div>
-
-                {/* =========================================
-                    CANCEL BUTTON
-                ========================================= */}
-
-                {booking.status === "UPCOMING" && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setBookingToCancel(booking)
-                    }
-                    className="shrink-0 rounded-xl border border-red-200 px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
-                  >
-                    Cancel Booking
-                  </button>
-                )}
 
               </div>
 
@@ -434,121 +452,151 @@ export default function BookingList() {
 
       {bookingToCancel && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#071B45]/60 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="cancel-booking-title"
         >
 
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-2xl">
 
-            {/* Modal Header */}
+            {/* Modal top accent */}
+            <div className="h-1 bg-[#E83B32]" />
 
-            <div className="flex items-start justify-between gap-4">
+            <div className="p-6">
 
-              <div>
+              {/* Modal Header */}
 
-                <h2
-                  id="cancel-booking-title"
-                  className="text-xl font-bold text-gray-900"
+              <div className="flex items-start justify-between gap-4">
+
+                <div>
+
+                  <p className="mb-1 text-xs font-bold uppercase tracking-[0.15em] text-[#E83B32]">
+                    Cancellation
+                  </p>
+
+                  <h2
+                    id="cancel-booking-title"
+                    className="text-xl font-bold text-[#10275F]"
+                  >
+                    Cancel Booking?
+                  </h2>
+
+                  <p className="mt-2 text-sm text-[#64748B]">
+                    Are you sure you want to cancel
+                    this booking?
+                  </p>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    !isCancelling &&
+                    setBookingToCancel(null)
+                  }
+                  disabled={isCancelling}
+                  className="rounded-full p-2 text-[#64748B] transition hover:bg-[#EEF4FF] hover:text-[#10275F] disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Close confirmation"
                 >
-                  Cancel Booking?
-                </h2>
-
-                <p className="mt-2 text-sm text-gray-500">
-                  Are you sure you want to cancel
-                  this booking?
-                </p>
+                  <X size={20} />
+                </button>
 
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  !isCancelling &&
-                  setBookingToCancel(null)
-                }
-                disabled={isCancelling}
-                className="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Close confirmation"
-              >
-                <X size={20} />
-              </button>
+              {/* Booking Preview */}
 
-            </div>
+              <div className="mt-5 rounded-xl border border-[#D5E2F7] bg-[#F6F9FF] p-4">
 
-            {/* Booking Preview */}
+                <p className="font-bold text-[#10275F]">
+                  {bookingToCancel.title}
+                </p>
 
-            <div className="mt-5 rounded-xl bg-gray-50 p-4">
+                <p className="mt-1 text-sm font-semibold text-[#1D55B8]">
+                  {bookingToCancel.room?.name ||
+                    "Conference Room"}
+                </p>
 
-              <p className="font-bold text-gray-900">
-                {bookingToCancel.title}
-              </p>
+                <div className="mt-3 space-y-2">
 
-              <p className="mt-1 text-sm font-semibold text-gray-600">
-                {bookingToCancel.room?.name ||
-                  "Conference Room"}
-              </p>
+                  <p className="flex items-center gap-2 text-sm text-[#64748B]">
+                    <CalendarDays
+                      size={15}
+                      className="text-[#1D55B8]"
+                    />
 
-              <p className="mt-2 text-sm text-gray-500">
-                {formatBookingDate(
-                  bookingToCancel.date
-                )}
-              </p>
+                    {formatBookingDate(
+                      bookingToCancel.date
+                    )}
+                  </p>
 
-              <p className="mt-1 text-sm text-gray-500">
-                {formatBookingTime(
-                  bookingToCancel.startTime
-                )}
+                  <p className="flex items-center gap-2 text-sm text-[#64748B]">
+                    <Clock
+                      size={15}
+                      className="text-[#1D55B8]"
+                    />
 
-                {" - "}
+                    {formatBookingTime(
+                      bookingToCancel.startTime
+                    )}
 
-                {formatBookingTime(
-                  bookingToCancel.endTime
-                )}
-              </p>
+                    {" - "}
 
-              <p className="mt-1 text-sm text-gray-500">
-                {bookingToCancel.room?.location ||
-                  "Main Office"}
-              </p>
+                    {formatBookingTime(
+                      bookingToCancel.endTime
+                    )}
+                  </p>
 
-            </div>
+                  <p className="flex items-center gap-2 text-sm text-[#64748B]">
+                    <MapPin
+                      size={15}
+                      className="text-[#1D55B8]"
+                    />
 
-            {/* Modal Buttons */}
+                    {bookingToCancel.room?.location ||
+                      "Main Office"}
+                  </p>
 
-            <div className="mt-6 flex justify-end gap-3">
+                </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  setBookingToCancel(null)
-                }
-                disabled={isCancelling}
-                className="rounded-xl border border-gray-200 px-5 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Keep Booking
-              </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={confirmCancellation}
-                disabled={isCancelling}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
+              {/* Modal Buttons */}
 
-                {isCancelling && (
-                  <Loader2
-                    size={16}
-                    className="animate-spin"
-                  />
-                )}
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
 
-                {isCancelling
-                  ? "Cancelling..."
-                  : "Cancel Booking"}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setBookingToCancel(null)
+                  }
+                  disabled={isCancelling}
+                  className="rounded-xl border border-[#D5E2F7] px-5 py-3 text-sm font-bold text-[#10275F] transition hover:bg-[#EEF4FF] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Keep Booking
+                </button>
 
-              </button>
+                <button
+                  type="button"
+                  onClick={confirmCancellation}
+                  disabled={isCancelling}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#E83B32] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#CF3028] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+
+                  {isCancelling && (
+                    <Loader2
+                      size={16}
+                      className="animate-spin"
+                    />
+                  )}
+
+                  {isCancelling
+                    ? "Cancelling..."
+                    : "Cancel Booking"}
+
+                </button>
+
+              </div>
 
             </div>
 

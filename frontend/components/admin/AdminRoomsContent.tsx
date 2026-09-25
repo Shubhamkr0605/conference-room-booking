@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
 import {
   Building2,
   Search,
@@ -16,7 +15,10 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  CalendarPlus,
 } from "lucide-react";
+
+import BookingModal from "@/components/bookings/BookingModal";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -50,10 +52,6 @@ interface RoomResponse {
   message?: string;
 }
 
-/* =====================================================
-   FORM TYPE
-===================================================== */
-
 interface RoomFormData {
   name: string;
   capacity: string;
@@ -62,18 +60,10 @@ interface RoomFormData {
   facilities: string[];
 }
 
-/* =====================================================
-   CONFIRMATION MODAL TYPE
-===================================================== */
-
 interface StatusConfirmation {
   room: Room;
   action: "activate" | "deactivate";
 }
-
-/* =====================================================
-   EMPTY FORM
-===================================================== */
 
 const emptyForm: RoomFormData = {
   name: "",
@@ -93,29 +83,20 @@ export default function AdminRoomsContent() {
   =================================================== */
 
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [refreshing, setRefreshing] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
+  const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] =
     useState("");
 
-  const [search, setSearch] =
-    useState("");
+  const [search, setSearch] = useState("");
 
   const [statusFilter, setStatusFilter] =
-    useState<"ALL" | "ACTIVE" | "INACTIVE">(
-      "ALL"
-    );
+    useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
 
   /* ===================================================
-     CREATE / EDIT MODAL
+     CREATE / EDIT
   =================================================== */
 
   const [isModalOpen, setIsModalOpen] =
@@ -130,30 +111,30 @@ export default function AdminRoomsContent() {
   const [facilityInput, setFacilityInput] =
     useState("");
 
-  const [saving, setSaving] =
-    useState(false);
+  const [saving, setSaving] = useState(false);
 
   /* ===================================================
-     STATUS UPDATE
+     STATUS
   =================================================== */
 
   const [updatingRoomId, setUpdatingRoomId] =
     useState<string | null>(null);
 
-  /* ===================================================
-     STATUS CONFIRMATION MODAL
-  =================================================== */
-
   const [statusConfirmation, setStatusConfirmation] =
     useState<StatusConfirmation | null>(null);
 
   /* ===================================================
-     FETCH ALL ROOMS
+     ADMIN BOOKING
   =================================================== */
 
-  async function fetchRooms(
-    showRefresh = false
-  ) {
+  const [bookingRoom, setBookingRoom] =
+    useState<Room | null>(null);
+
+  /* ===================================================
+     FETCH ROOMS
+  =================================================== */
+
+  async function fetchRooms(showRefresh = false) {
     try {
       setError("");
       setSuccessMessage("");
@@ -169,6 +150,7 @@ export default function AdminRoomsContent() {
         {
           method: "GET",
           credentials: "include",
+          cache: "no-store",
         }
       );
 
@@ -180,7 +162,6 @@ export default function AdminRoomsContent() {
           result.message ||
             "Failed to load rooms"
         );
-
         return;
       }
 
@@ -209,7 +190,7 @@ export default function AdminRoomsContent() {
   }, []);
 
   /* ===================================================
-     OPEN CREATE MODAL
+     CREATE ROOM
   =================================================== */
 
   function openCreateModal() {
@@ -222,12 +203,11 @@ export default function AdminRoomsContent() {
     setFacilityInput("");
     setError("");
     setSuccessMessage("");
-
     setIsModalOpen(true);
   }
 
   /* ===================================================
-     OPEN EDIT MODAL
+     EDIT ROOM
   =================================================== */
 
   function openEditModal(room: Room) {
@@ -244,7 +224,6 @@ export default function AdminRoomsContent() {
     setFacilityInput("");
     setError("");
     setSuccessMessage("");
-
     setIsModalOpen(true);
   }
 
@@ -305,13 +284,10 @@ export default function AdminRoomsContent() {
       return;
     }
 
-    if (
-      formData.facilities.length >= 30
-    ) {
+    if (formData.facilities.length >= 30) {
       setError(
         "You can add a maximum of 30 facilities."
       );
-
       return;
     }
 
@@ -430,11 +406,6 @@ export default function AdminRoomsContent() {
       return;
     }
 
-    /*
-     * If the user typed a facility but
-     * forgot to press Enter, include it.
-     */
-
     const facilities = [
       ...formData.facilities,
     ];
@@ -450,33 +421,26 @@ export default function AdminRoomsContent() {
           pendingFacility.toLowerCase()
       )
     ) {
-      facilities.push(
-        pendingFacility
-      );
+      facilities.push(pendingFacility);
     }
 
     if (facilities.length > 30) {
       setError(
         "You can add a maximum of 30 facilities."
       );
-
       return;
     }
 
     const payload = {
       name: formData.name.trim(),
-
       capacity: Number(
         formData.capacity
       ),
-
       location:
         formData.location.trim(),
-
       description:
         formData.description.trim() ||
         undefined,
-
       facilities,
     };
 
@@ -518,14 +482,8 @@ export default function AdminRoomsContent() {
           result.message ||
             "Failed to save room"
         );
-
         return;
       }
-
-      /*
-       * Update local state instead of
-       * requiring a full page refresh.
-       */
 
       if (result.room) {
         if (isEditing) {
@@ -568,12 +526,10 @@ export default function AdminRoomsContent() {
   }
 
   /* ===================================================
-     OPEN STATUS CONFIRMATION
+     ACTIVATE / DEACTIVATE
   =================================================== */
 
-  function toggleRoomStatus(
-    room: Room
-  ) {
+  function toggleRoomStatus(room: Room) {
     setError("");
     setSuccessMessage("");
 
@@ -585,10 +541,6 @@ export default function AdminRoomsContent() {
     });
   }
 
-  /* ===================================================
-     CLOSE STATUS CONFIRMATION
-  =================================================== */
-
   function closeStatusConfirmation() {
     if (updatingRoomId) {
       return;
@@ -596,10 +548,6 @@ export default function AdminRoomsContent() {
 
     setStatusConfirmation(null);
   }
-
-  /* ===================================================
-     CONFIRM STATUS UPDATE
-  =================================================== */
 
   async function confirmStatusUpdate() {
     if (!statusConfirmation) {
@@ -645,7 +593,6 @@ export default function AdminRoomsContent() {
           result.message ||
             `Failed to ${action} room`
         );
-
         return;
       }
 
@@ -682,6 +629,27 @@ export default function AdminRoomsContent() {
     } finally {
       setUpdatingRoomId(null);
     }
+  }
+
+  /* ===================================================
+     ADMIN BOOK ROOM
+  =================================================== */
+
+  function openBookingModal(room: Room) {
+    if (!room.isActive) {
+      setError(
+        "Inactive rooms cannot be booked."
+      );
+      return;
+    }
+
+    setError("");
+    setSuccessMessage("");
+    setBookingRoom(room);
+  }
+
+  function closeBookingModal() {
+    setBookingRoom(null);
   }
 
   /* ===================================================
@@ -752,18 +720,45 @@ export default function AdminRoomsContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center">
-        <div className="text-center">
-          <RefreshCw
-            size={28}
-            className="mx-auto animate-spin text-gray-500"
-          />
+      <main className="min-h-screen bg-[#EEF4FF] p-5 md:p-8 lg:p-10">
 
-          <p className="mt-3 text-sm text-gray-500">
-            Loading rooms...
+        <div className="mb-8">
+
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#E83B32]">
+            Administration
           </p>
+
+          <h1 className="text-3xl font-bold text-[#10275F] md:text-4xl">
+            Rooms
+          </h1>
+
+          <p className="mt-2 text-sm text-[#64748B]">
+            Manage conference rooms and
+            their availability.
+          </p>
+
         </div>
-      </div>
+
+        <div className="flex min-h-[55vh] items-center justify-center rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
+
+          <div className="text-center">
+
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EEF4FF]">
+              <RefreshCw
+                size={27}
+                className="animate-spin text-[#1D55B8]"
+              />
+            </div>
+
+            <p className="mt-4 text-sm font-semibold text-[#64748B]">
+              Loading rooms...
+            </p>
+
+          </div>
+
+        </div>
+
+      </main>
     );
   }
 
@@ -772,29 +767,40 @@ export default function AdminRoomsContent() {
   =================================================== */
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6 lg:p-8">
+    <main className="min-h-screen w-full bg-[#EEF4FF] p-5 md:p-8 lg:p-10">
 
       {/* =================================================
           HEADER
       ================================================= */}
 
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
 
         <div>
-          <p className="text-sm font-medium text-gray-500">
-            Admin Panel
+
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#E83B32]">
+            Administration
           </p>
 
-          <h1 className="mt-1 text-3xl font-bold text-gray-900">
-            Rooms
-          </h1>
+          <div className="flex items-center gap-3">
 
-          <p className="mt-1 text-sm text-gray-500">
-            Manage conference rooms and their availability.
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#102D72] text-white">
+              <Building2 size={22} />
+            </div>
+
+            <h1 className="text-3xl font-bold tracking-tight text-[#10275F] md:text-4xl">
+              Rooms
+            </h1>
+
+          </div>
+
+          <p className="mt-2 text-sm text-[#64748B]">
+            Manage conference rooms and
+            their availability.
           </p>
+
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
 
           <button
             type="button"
@@ -802,7 +808,28 @@ export default function AdminRoomsContent() {
               fetchRooms(true)
             }
             disabled={refreshing}
-            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="
+              inline-flex
+              h-11
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              border
+              border-[#D5E2F7]
+              bg-white
+              px-5
+              text-sm
+              font-bold
+              text-[#10275F]
+              shadow-sm
+              transition
+              hover:border-[#B8CCEC]
+              hover:bg-[#F6F9FF]
+              hover:text-[#1D55B8]
+              disabled:cursor-not-allowed
+              disabled:opacity-60
+            "
           >
             <RefreshCw
               size={17}
@@ -823,14 +850,29 @@ export default function AdminRoomsContent() {
             onClick={
               openCreateModal
             }
-            className="flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800"
+            className="
+              inline-flex
+              h-11
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              bg-[#102D72]
+              px-5
+              text-sm
+              font-bold
+              text-white
+              shadow-sm
+              transition
+              hover:bg-[#0C245C]
+            "
           >
             <Plus size={18} />
-
             Add Room
           </button>
 
         </div>
+
       </div>
 
       {/* =================================================
@@ -841,81 +883,38 @@ export default function AdminRoomsContent() {
 
         {/* Total */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
-          <div className="flex items-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
-              <Building2
-                size={21}
-                className="text-gray-700"
-              />
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Total Rooms
-              </p>
-
-              <p className="text-2xl font-bold text-gray-900">
-                {totalRooms}
-              </p>
-            </div>
-
-          </div>
-        </div>
+        <StatCard
+          title="Total Rooms"
+          value={totalRooms}
+          icon={
+            <Building2 size={21} />
+          }
+          iconClass="bg-[#EEF4FF] text-[#1D55B8]"
+        />
 
         {/* Active */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
-          <div className="flex items-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50">
-              <CheckCircle2
-                size={21}
-                className="text-green-600"
-              />
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Active Rooms
-              </p>
-
-              <p className="text-2xl font-bold text-gray-900">
-                {activeRooms}
-              </p>
-            </div>
-
-          </div>
-        </div>
+        <StatCard
+          title="Active Rooms"
+          value={activeRooms}
+          icon={
+            <CheckCircle2
+              size={21}
+            />
+          }
+          iconClass="bg-[#EEF4FF] text-[#1D55B8]"
+        />
 
         {/* Inactive */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
-          <div className="flex items-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
-              <XCircle
-                size={21}
-                className="text-gray-500"
-              />
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Inactive Rooms
-              </p>
-
-              <p className="text-2xl font-bold text-gray-900">
-                {inactiveRooms}
-              </p>
-            </div>
-
-          </div>
-        </div>
+        <StatCard
+          title="Inactive Rooms"
+          value={inactiveRooms}
+          icon={
+            <XCircle size={21} />
+          }
+          iconClass="bg-slate-100 text-slate-500"
+        />
 
       </div>
 
@@ -924,20 +923,31 @@ export default function AdminRoomsContent() {
       ================================================= */}
 
       {error && (
-        <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-white px-4 py-3 shadow-sm">
 
-          <span>
-            {error}
-          </span>
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-50">
+              <AlertTriangle
+                size={16}
+                className="text-[#E83B32]"
+              />
+            </div>
+
+            <span className="text-sm font-medium text-[#E83B32]">
+              {error}
+            </span>
+
+          </div>
 
           <button
             type="button"
             onClick={() =>
               setError("")
             }
-            className="text-lg font-bold text-red-500 hover:text-red-700"
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-[#E83B32]"
           >
-            ×
+            <X size={17} />
           </button>
 
         </div>
@@ -948,20 +958,31 @@ export default function AdminRoomsContent() {
       ================================================= */}
 
       {successMessage && (
-        <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-600">
+        <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-blue-200 bg-white px-4 py-3 shadow-sm">
 
-          <span>
-            {successMessage}
-          </span>
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EEF4FF]">
+              <CheckCircle2
+                size={17}
+                className="text-[#1D55B8]"
+              />
+            </div>
+
+            <span className="text-sm font-semibold text-[#1D55B8]">
+              {successMessage}
+            </span>
+
+          </div>
 
           <button
             type="button"
             onClick={() =>
               setSuccessMessage("")
             }
-            className="text-lg font-bold text-green-500 hover:text-green-700"
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-[#EEF4FF] hover:text-[#1D55B8]"
           >
-            ×
+            <X size={17} />
           </button>
 
         </div>
@@ -971,17 +992,15 @@ export default function AdminRoomsContent() {
           FILTERS
       ================================================= */}
 
-      <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-6 rounded-2xl border border-[#D5E2F7] bg-white p-4 shadow-sm">
 
         <div className="flex flex-col gap-3 md:flex-row">
-
-          {/* Search */}
 
           <div className="relative flex-1">
 
             <Search
               size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]"
             />
 
             <input
@@ -993,24 +1012,56 @@ export default function AdminRoomsContent() {
                 )
               }
               placeholder="Search rooms by name, location or facility..."
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-gray-400 focus:bg-white"
+              className="
+                w-full
+                rounded-xl
+                border
+                border-[#D5E2F7]
+                bg-[#F6F9FF]
+                py-2.5
+                pl-10
+                pr-4
+                text-sm
+                text-[#10275F]
+                outline-none
+                transition
+                placeholder:text-[#94A3B8]
+                focus:border-[#1D55B8]
+                focus:bg-white
+                focus:ring-2
+                focus:ring-[#1D55B8]/10
+              "
             />
 
           </div>
-
-          {/* Status */}
 
           <select
             value={statusFilter}
             onChange={(event) =>
               setStatusFilter(
-                event.target.value as
+                event.target
+                  .value as
                   | "ALL"
                   | "ACTIVE"
                   | "INACTIVE"
               )
             }
-            className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 outline-none"
+            className="
+              rounded-xl
+              border
+              border-[#D5E2F7]
+              bg-[#F6F9FF]
+              px-4
+              py-2.5
+              text-sm
+              font-semibold
+              text-[#10275F]
+              outline-none
+              transition
+              focus:border-[#1D55B8]
+              focus:ring-2
+              focus:ring-[#1D55B8]/10
+            "
           >
             <option value="ALL">
               All Status
@@ -1026,6 +1077,7 @@ export default function AdminRoomsContent() {
           </select>
 
         </div>
+
       </div>
 
       {/* =================================================
@@ -1034,19 +1086,22 @@ export default function AdminRoomsContent() {
 
       {filteredRooms.length === 0 ? (
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+        <div className="rounded-2xl border border-[#D5E2F7] bg-white p-12 text-center shadow-sm">
 
-          <Building2
-            size={40}
-            className="mx-auto text-gray-300"
-          />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EEF4FF]">
+            <Building2
+              size={30}
+              className="text-[#1D55B8]"
+            />
+          </div>
 
-          <h3 className="mt-4 text-base font-bold text-gray-700">
+          <h3 className="mt-4 text-base font-bold text-[#10275F]">
             No rooms found
           </h3>
 
-          <p className="mt-1 text-sm text-gray-400">
-            Try changing your search or status filter.
+          <p className="mt-1 text-sm text-[#64748B]">
+            Try changing your search
+            or status filter.
           </p>
 
           <button
@@ -1054,10 +1109,23 @@ export default function AdminRoomsContent() {
             onClick={
               openCreateModal
             }
-            className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
+            className="
+              mt-5
+              inline-flex
+              items-center
+              gap-2
+              rounded-xl
+              bg-[#102D72]
+              px-5
+              py-2.5
+              text-sm
+              font-bold
+              text-white
+              transition
+              hover:bg-[#0C245C]
+            "
           >
             <Plus size={17} />
-
             Add Room
           </button>
 
@@ -1077,37 +1145,136 @@ export default function AdminRoomsContent() {
               return (
                 <article
                   key={room._id}
-                  className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+                  className="
+                    overflow-hidden
+                    rounded-2xl
+                    border
+                    border-[#D5E2F7]
+                    bg-white
+                    shadow-sm
+                    transition
+                    hover:-translate-y-0.5
+                    hover:shadow-md
+                  "
                 >
 
-                  {/* Room Header */}
+                  {/* TOP ACCENT */}
 
-                  <div className="flex items-start justify-between gap-4">
+                  <div
+                    className={`h-1.5 ${
+                      room.isActive
+                        ? "bg-[#1D55B8]"
+                        : "bg-slate-300"
+                    }`}
+                  />
 
-                    <div className="flex min-w-0 items-start gap-4">
+                  <div className="p-5">
 
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100">
-                        <Building2
-                          size={23}
-                          className="text-gray-700"
-                        />
+                    {/* ROOM HEADER */}
+
+                    <div className="flex items-start justify-between gap-4">
+
+                      <div className="flex min-w-0 items-start gap-4">
+
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#EEF4FF]">
+                          <Building2
+                            size={23}
+                            className="text-[#1D55B8]"
+                          />
+                        </div>
+
+                        <div className="min-w-0">
+
+                          <h2 className="truncate text-lg font-bold text-[#10275F]">
+                            {room.name}
+                          </h2>
+
+                          <div className="mt-1 flex items-center gap-1.5 text-sm text-[#64748B]">
+
+                            <MapPin
+                              size={15}
+                              className="text-[#1D55B8]"
+                            />
+
+                            <span className="truncate">
+                              {room.location}
+                            </span>
+
+                          </div>
+
+                        </div>
+
                       </div>
 
-                      <div className="min-w-0">
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${
+                          room.isActive
+                            ? "border border-blue-200 bg-[#EEF4FF] text-[#1D55B8]"
+                            : "border border-slate-200 bg-slate-50 text-slate-500"
+                        }`}
+                      >
 
-                        <h2 className="truncate text-lg font-bold text-gray-900">
-                          {room.name}
-                        </h2>
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            room.isActive
+                              ? "bg-[#1D55B8]"
+                              : "bg-slate-400"
+                          }`}
+                        />
 
-                        <div className="mt-1 flex items-center gap-1.5 text-sm text-gray-500">
+                        {room.isActive
+                          ? "ACTIVE"
+                          : "INACTIVE"}
 
-                          <MapPin
-                            size={15}
-                          />
+                      </span>
 
-                          <span>
+                    </div>
+
+                    {/* ROOM DETAILS */}
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+
+                      <div className="flex items-center gap-2 rounded-xl bg-[#F6F9FF] px-3 py-2.5">
+
+                        <Users
+                          size={17}
+                          className="text-[#1D55B8]"
+                        />
+
+                        <div>
+
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">
+                            Capacity
+                          </p>
+
+                          <p className="text-sm font-semibold text-[#10275F]">
+                            {room.capacity}{" "}
+                            {room.capacity ===
+                            1
+                              ? "person"
+                              : "people"}
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                      <div className="flex items-center gap-2 rounded-xl bg-[#F6F9FF] px-3 py-2.5">
+
+                        <MapPin
+                          size={17}
+                          className="text-[#1D55B8]"
+                        />
+
+                        <div className="min-w-0">
+
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">
+                            Location
+                          </p>
+
+                          <p className="truncate text-sm font-semibold text-[#10275F]">
                             {room.location}
-                          </span>
+                          </p>
 
                         </div>
 
@@ -1115,184 +1282,178 @@ export default function AdminRoomsContent() {
 
                     </div>
 
-                    {/* Status */}
+                    {/* DESCRIPTION */}
 
-                    <span
-                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${
-                        room.isActive
-                          ? "bg-green-50 text-green-600"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          room.isActive
-                            ? "bg-green-500"
-                            : "bg-gray-400"
-                        }`}
-                      />
-
-                      {room.isActive
-                        ? "ACTIVE"
-                        : "INACTIVE"}
-
-                    </span>
-
-                  </div>
-
-                  {/* Room Details */}
-
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-
-                    <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2.5">
-
-                      <Users
-                        size={17}
-                        className="text-gray-500"
-                      />
-
-                      <div>
-
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                          Capacity
-                        </p>
-
-                        <p className="text-sm font-semibold text-gray-700">
-                          {room.capacity}{" "}
-                          {room.capacity ===
-                          1
-                            ? "person"
-                            : "people"}
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                    <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2.5">
-
-                      <MapPin
-                        size={17}
-                        className="text-gray-500"
-                      />
-
-                      <div>
-
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                          Location
-                        </p>
-
-                        <p className="truncate text-sm font-semibold text-gray-700">
-                          {room.location}
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                  {/* Description */}
-
-                  {room.description && (
-                    <p className="mt-4 text-sm leading-6 text-gray-500">
-                      {room.description}
-                    </p>
-                  )}
-
-                  {/* Facilities */}
-
-                  {room.facilities.length >
-                    0 && (
-                    <div className="mt-4">
-
-                      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">
-                        Facilities
+                    {room.description && (
+                      <p className="mt-4 text-sm leading-6 text-[#64748B]">
+                        {room.description}
                       </p>
+                    )}
 
-                      <div className="flex flex-wrap gap-2">
+                    {/* FACILITIES */}
 
-                        {room.facilities.map(
-                          (
-                            facility
-                          ) => (
-                            <span
-                              key={
-                                facility
-                              }
-                              className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600"
-                            >
-                              {
-                                facility
-                              }
-                            </span>
+                    {room.facilities.length >
+                      0 && (
+                      <div className="mt-4">
+
+                        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#94A3B8]">
+                          Facilities
+                        </p>
+
+                        <div className="flex flex-wrap gap-2">
+
+                          {room.facilities.map(
+                            (facility) => (
+                              <span
+                                key={
+                                  facility
+                                }
+                                className="
+                                  rounded-lg
+                                  border
+                                  border-[#D5E2F7]
+                                  bg-[#F6F9FF]
+                                  px-2.5
+                                  py-1
+                                  text-xs
+                                  font-semibold
+                                  text-[#475569]
+                                "
+                              >
+                                {facility}
+                              </span>
+                            )
+                          )}
+
+                        </div>
+
+                      </div>
+                    )}
+
+                    {/* ACTIONS */}
+
+                    <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-[#E5ECF7] pt-4">
+
+                      {/* BOOK */}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openBookingModal(
+                            room
                           )
+                        }
+                        disabled={
+                          isUpdating ||
+                          !room.isActive
+                        }
+                        title={
+                          room.isActive
+                            ? "Book room"
+                            : "Inactive rooms cannot be booked"
+                        }
+                        className="
+                          inline-flex
+                          items-center
+                          gap-2
+                          rounded-lg
+                          border
+                          border-[#D5E2F7]
+                          bg-white
+                          px-3
+                          py-2
+                          text-xs
+                          font-bold
+                          text-[#102D72]
+                          transition
+                          hover:border-[#1D55B8]
+                          hover:bg-[#EEF4FF]
+                          hover:text-[#1D55B8]
+                          disabled:cursor-not-allowed
+                          disabled:opacity-40
+                        "
+                      >
+                        <CalendarPlus
+                          size={14}
+                        />
+                        Book Room
+                      </button>
+
+                      {/* EDIT */}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openEditModal(
+                            room
+                          )
+                        }
+                        disabled={
+                          isUpdating
+                        }
+                        className="
+                          inline-flex
+                          items-center
+                          gap-2
+                          rounded-lg
+                          border
+                          border-[#D5E2F7]
+                          bg-white
+                          px-3
+                          py-2
+                          text-xs
+                          font-bold
+                          text-[#475569]
+                          transition
+                          hover:bg-[#F6F9FF]
+                          hover:text-[#10275F]
+                          disabled:cursor-not-allowed
+                          disabled:opacity-50
+                        "
+                      >
+                        <Pencil
+                          size={14}
+                        />
+                        Edit
+                      </button>
+
+                      {/* ACTIVATE / DEACTIVATE */}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleRoomStatus(
+                            room
+                          )
+                        }
+                        disabled={
+                          isUpdating
+                        }
+                        className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                          room.isActive
+                            ? "border border-red-200 bg-red-50 text-[#E83B32] hover:bg-red-100"
+                            : "bg-[#102D72] text-white hover:bg-[#0C245C]"
+                        }`}
+                      >
+
+                        {isUpdating ? (
+                          <RefreshCw
+                            size={14}
+                            className="animate-spin"
+                          />
+                        ) : (
+                          <Power
+                            size={14}
+                          />
                         )}
 
-                      </div>
+                        {room.isActive
+                          ? "Deactivate"
+                          : "Activate"}
+
+                      </button>
 
                     </div>
-                  )}
-
-                  {/* Actions */}
-
-                  <div className="mt-5 flex items-center justify-end gap-2 border-t border-gray-100 pt-4">
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        openEditModal(
-                          room
-                        )
-                      }
-                      disabled={
-                        isUpdating
-                      }
-                      className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-
-                      <Pencil
-                        size={14}
-                      />
-
-                      Edit
-
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toggleRoomStatus(
-                          room
-                        )
-                      }
-                      disabled={
-                        isUpdating
-                      }
-                      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                        room.isActive
-                          ? "border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
-                          : "bg-gray-900 text-white hover:bg-gray-800"
-                      }`}
-                    >
-
-                      {isUpdating ? (
-                        <RefreshCw
-                          size={14}
-                          className="animate-spin"
-                        />
-                      ) : (
-                        <Power
-                          size={14}
-                        />
-                      )}
-
-                      {room.isActive
-                        ? "Deactivate"
-                        : "Activate"}
-
-                    </button>
 
                   </div>
 
@@ -1309,23 +1470,54 @@ export default function AdminRoomsContent() {
       ================================================= */}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div
+          className="
+            fixed
+            inset-0
+            z-50
+            flex
+            items-center
+            justify-center
+            bg-[#071B45]/60
+            p-4
+            backdrop-blur-[2px]
+          "
+          onMouseDown={(event) => {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
+              closeModal();
+            }
+          }}
+        >
 
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#D5E2F7] bg-white shadow-2xl">
 
-            {/* Modal Header */}
+            {/* MODAL HEADER */}
 
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+            <div className="flex items-center justify-between border-b border-[#E5ECF7] px-6 py-5">
 
               <div>
 
-                <h2 className="text-xl font-bold text-gray-900">
-                  {editingRoom
-                    ? "Edit Room"
-                    : "Add New Room"}
-                </h2>
+                <div className="flex items-center gap-3">
 
-                <p className="mt-1 text-sm text-gray-500">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FF]">
+                    <Building2
+                      size={19}
+                      className="text-[#1D55B8]"
+                    />
+                  </div>
+
+                  <h2 className="text-xl font-bold text-[#10275F]">
+                    {editingRoom
+                      ? "Edit Room"
+                      : "Add New Room"}
+                  </h2>
+
+                </div>
+
+                <p className="mt-2 text-sm text-[#64748B]">
                   {editingRoom
                     ? "Update the room details below."
                     : "Create a new conference room."}
@@ -1339,14 +1531,20 @@ export default function AdminRoomsContent() {
                   closeModal
                 }
                 disabled={saving}
-                className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed"
+                className="
+                  rounded-lg
+                  p-2
+                  text-[#94A3B8]
+                  transition
+                  hover:bg-[#EEF4FF]
+                  hover:text-[#10275F]
+                  disabled:cursor-not-allowed
+                "
               >
                 <X size={20} />
               </button>
 
             </div>
-
-            {/* Modal Form */}
 
             <form
               onSubmit={saveRoom}
@@ -1355,11 +1553,11 @@ export default function AdminRoomsContent() {
 
               <div className="grid gap-5 sm:grid-cols-2">
 
-                {/* Room Name */}
+                {/* ROOM NAME */}
 
                 <div className="sm:col-span-2">
 
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  <label className="mb-2 block text-sm font-bold text-[#10275F]">
                     Room Name
                   </label>
 
@@ -1378,16 +1576,34 @@ export default function AdminRoomsContent() {
                     placeholder="e.g. Board Room"
                     maxLength={100}
                     disabled={saving}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-gray-400 disabled:bg-gray-50"
+                    className="
+                      w-full
+                      rounded-xl
+                      border
+                      border-[#D5E2F7]
+                      bg-[#F6F9FF]
+                      px-4
+                      py-3
+                      text-sm
+                      text-[#10275F]
+                      outline-none
+                      transition
+                      placeholder:text-[#94A3B8]
+                      focus:border-[#1D55B8]
+                      focus:bg-white
+                      focus:ring-2
+                      focus:ring-[#1D55B8]/10
+                      disabled:bg-slate-50
+                    "
                   />
 
                 </div>
 
-                {/* Capacity */}
+                {/* CAPACITY */}
 
                 <div>
 
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  <label className="mb-2 block text-sm font-bold text-[#10275F]">
                     Capacity
                   </label>
 
@@ -1408,16 +1624,33 @@ export default function AdminRoomsContent() {
                     }
                     placeholder="e.g. 12"
                     disabled={saving}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-gray-400 disabled:bg-gray-50"
+                    className="
+                      w-full
+                      rounded-xl
+                      border
+                      border-[#D5E2F7]
+                      bg-[#F6F9FF]
+                      px-4
+                      py-3
+                      text-sm
+                      text-[#10275F]
+                      outline-none
+                      transition
+                      placeholder:text-[#94A3B8]
+                      focus:border-[#1D55B8]
+                      focus:bg-white
+                      focus:ring-2
+                      focus:ring-[#1D55B8]/10
+                    "
                   />
 
                 </div>
 
-                {/* Location */}
+                {/* LOCATION */}
 
                 <div>
 
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  <label className="mb-2 block text-sm font-bold text-[#10275F]">
                     Location
                   </label>
 
@@ -1436,16 +1669,33 @@ export default function AdminRoomsContent() {
                     placeholder="e.g. 2nd Floor"
                     maxLength={200}
                     disabled={saving}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-gray-400 disabled:bg-gray-50"
+                    className="
+                      w-full
+                      rounded-xl
+                      border
+                      border-[#D5E2F7]
+                      bg-[#F6F9FF]
+                      px-4
+                      py-3
+                      text-sm
+                      text-[#10275F]
+                      outline-none
+                      transition
+                      placeholder:text-[#94A3B8]
+                      focus:border-[#1D55B8]
+                      focus:bg-white
+                      focus:ring-2
+                      focus:ring-[#1D55B8]/10
+                    "
                   />
 
                 </div>
 
-                {/* Description */}
+                {/* DESCRIPTION */}
 
                 <div className="sm:col-span-2">
 
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  <label className="mb-2 block text-sm font-bold text-[#10275F]">
                     Description
                   </label>
 
@@ -1464,10 +1714,28 @@ export default function AdminRoomsContent() {
                     maxLength={1000}
                     rows={4}
                     disabled={saving}
-                    className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-gray-400 disabled:bg-gray-50"
+                    className="
+                      w-full
+                      resize-none
+                      rounded-xl
+                      border
+                      border-[#D5E2F7]
+                      bg-[#F6F9FF]
+                      px-4
+                      py-3
+                      text-sm
+                      text-[#10275F]
+                      outline-none
+                      transition
+                      placeholder:text-[#94A3B8]
+                      focus:border-[#1D55B8]
+                      focus:bg-white
+                      focus:ring-2
+                      focus:ring-[#1D55B8]/10
+                    "
                   />
 
-                  <p className="mt-1 text-right text-xs text-gray-400">
+                  <p className="mt-1 text-right text-xs text-[#94A3B8]">
                     {
                       formData
                         .description
@@ -1478,11 +1746,11 @@ export default function AdminRoomsContent() {
 
                 </div>
 
-                {/* Facilities */}
+                {/* FACILITIES */}
 
                 <div className="sm:col-span-2">
 
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  <label className="mb-2 block text-sm font-bold text-[#10275F]">
                     Facilities
                   </label>
 
@@ -1493,9 +1761,7 @@ export default function AdminRoomsContent() {
                       value={
                         facilityInput
                       }
-                      onChange={(
-                        event
-                      ) =>
+                      onChange={(event) =>
                         setFacilityInput(
                           event.target
                             .value
@@ -1506,7 +1772,25 @@ export default function AdminRoomsContent() {
                       }
                       placeholder="e.g. Projector"
                       disabled={saving}
-                      className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-gray-400 disabled:bg-gray-50"
+                      className="
+                        min-w-0
+                        flex-1
+                        rounded-xl
+                        border
+                        border-[#D5E2F7]
+                        bg-[#F6F9FF]
+                        px-4
+                        py-3
+                        text-sm
+                        text-[#10275F]
+                        outline-none
+                        transition
+                        placeholder:text-[#94A3B8]
+                        focus:border-[#1D55B8]
+                        focus:bg-white
+                        focus:ring-2
+                        focus:ring-[#1D55B8]/10
+                      "
                     />
 
                     <button
@@ -1518,32 +1802,56 @@ export default function AdminRoomsContent() {
                         saving ||
                         !facilityInput.trim()
                       }
-                      className="rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="
+                        rounded-xl
+                        border
+                        border-[#D5E2F7]
+                        bg-[#EEF4FF]
+                        px-4
+                        text-sm
+                        font-bold
+                        text-[#1D55B8]
+                        transition
+                        hover:bg-[#DCE9FF]
+                        disabled:cursor-not-allowed
+                        disabled:opacity-50
+                      "
                     >
                       Add
                     </button>
 
                   </div>
 
-                  <p className="mt-2 text-xs text-gray-400">
-                    Type a facility and press Enter or click Add.
+                  <p className="mt-2 text-xs text-[#94A3B8]">
+                    Type a facility and
+                    press Enter or click
+                    Add.
                   </p>
-
-                  {/* Facility Chips */}
 
                   {formData.facilities
                     .length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
 
                       {formData.facilities.map(
-                        (
-                          facility
-                        ) => (
+                        (facility) => (
                           <span
                             key={
                               facility
                             }
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700"
+                            className="
+                              inline-flex
+                              items-center
+                              gap-1.5
+                              rounded-lg
+                              border
+                              border-[#D5E2F7]
+                              bg-[#EEF4FF]
+                              px-3
+                              py-1.5
+                              text-xs
+                              font-bold
+                              text-[#1D55B8]
+                            "
                           >
 
                             {
@@ -1560,7 +1868,12 @@ export default function AdminRoomsContent() {
                               disabled={
                                 saving
                               }
-                              className="rounded-full text-gray-400 hover:text-red-500"
+                              className="
+                                rounded-full
+                                text-[#7C94B8]
+                                transition
+                                hover:text-[#E83B32]
+                              "
                             >
                               <X
                                 size={
@@ -1580,17 +1893,26 @@ export default function AdminRoomsContent() {
 
               </div>
 
-              {/* Form Error */}
+              {/* FORM ERROR */}
 
               {error && (
-                <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                  {error}
+                <div className="mt-5 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-[#E83B32]">
+
+                  <AlertTriangle
+                    size={17}
+                    className="shrink-0"
+                  />
+
+                  <span>
+                    {error}
+                  </span>
+
                 </div>
               )}
 
-              {/* Buttons */}
+              {/* BUTTONS */}
 
-              <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5">
+              <div className="mt-6 flex justify-end gap-3 border-t border-[#E5ECF7] pt-5">
 
                 <button
                   type="button"
@@ -1598,7 +1920,21 @@ export default function AdminRoomsContent() {
                     closeModal
                   }
                   disabled={saving}
-                  className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="
+                    rounded-xl
+                    border
+                    border-[#D5E2F7]
+                    bg-white
+                    px-5
+                    py-2.5
+                    text-sm
+                    font-bold
+                    text-[#475569]
+                    transition
+                    hover:bg-[#F6F9FF]
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
+                  "
                 >
                   Cancel
                 </button>
@@ -1606,7 +1942,22 @@ export default function AdminRoomsContent() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    rounded-xl
+                    bg-[#102D72]
+                    px-5
+                    py-2.5
+                    text-sm
+                    font-bold
+                    text-white
+                    transition
+                    hover:bg-[#0C245C]
+                    disabled:cursor-not-allowed
+                    disabled:opacity-60
+                  "
                 >
 
                   {saving ? (
@@ -1636,30 +1987,40 @@ export default function AdminRoomsContent() {
       )}
 
       {/* =================================================
-          ACTIVATE / DEACTIVATE CONFIRMATION MODAL
+          ACTIVATE / DEACTIVATE CONFIRMATION
       ================================================= */}
 
       {statusConfirmation && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 backdrop-blur-[2px]"
-          onClick={closeStatusConfirmation}
+          className="
+            fixed
+            inset-0
+            z-[100]
+            flex
+            items-center
+            justify-center
+            bg-[#071B45]/60
+            px-4
+            backdrop-blur-[2px]
+          "
+          onClick={
+            closeStatusConfirmation
+          }
         >
 
           <div
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-[#D5E2F7] bg-white p-6 shadow-2xl"
             onClick={(event) =>
               event.stopPropagation()
             }
           >
 
-            {/* Icon */}
-
             <div
               className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${
                 statusConfirmation.action ===
                 "deactivate"
-                  ? "bg-red-100"
-                  : "bg-green-100"
+                  ? "bg-red-50"
+                  : "bg-[#EEF4FF]"
               }`}
             >
 
@@ -1667,49 +2028,43 @@ export default function AdminRoomsContent() {
               "deactivate" ? (
                 <AlertTriangle
                   size={27}
-                  className="text-red-600"
+                  className="text-[#E83B32]"
                 />
               ) : (
                 <Power
                   size={27}
-                  className="text-green-600"
+                  className="text-[#1D55B8]"
                 />
               )}
 
             </div>
 
-            {/* Title + Message */}
-
             <div className="mt-5 text-center">
 
-              <h3 className="text-xl font-bold text-gray-900">
-
+              <h3 className="text-xl font-bold text-[#10275F]">
                 {statusConfirmation.action ===
                 "deactivate"
                   ? "Deactivate Room?"
                   : "Activate Room?"}
-
               </h3>
 
-              <p className="mt-2 text-sm leading-6 text-gray-500">
+              <p className="mt-2 text-sm leading-6 text-[#64748B]">
 
                 Are you sure you want to{" "}
 
-                <span className="font-semibold text-gray-800">
+                <span className="font-bold text-[#10275F]">
                   {statusConfirmation.action ===
                   "deactivate"
                     ? "deactivate"
                     : "activate"}
                 </span>{" "}
 
-                <span className="font-semibold text-gray-800">
+                <span className="font-bold text-[#10275F]">
                   "{statusConfirmation.room.name}"
                 </span>
                 ?
 
               </p>
-
-              {/* Deactivate warning */}
 
               {statusConfirmation.action ===
                 "deactivate" && (
@@ -1719,11 +2074,14 @@ export default function AdminRoomsContent() {
 
                     <AlertTriangle
                       size={17}
-                      className="mt-0.5 shrink-0 text-red-500"
+                      className="mt-0.5 shrink-0 text-[#E83B32]"
                     />
 
-                    <p className="text-xs leading-5 text-red-600">
-                      Employees will no longer be able to book this room while it is inactive.
+                    <p className="text-xs leading-5 text-[#E83B32]">
+                      Employees will no
+                      longer be able to
+                      book this room while
+                      it is inactive.
                     </p>
 
                   </div>
@@ -1731,21 +2089,21 @@ export default function AdminRoomsContent() {
                 </div>
               )}
 
-              {/* Activate information */}
-
               {statusConfirmation.action ===
                 "activate" && (
-                <div className="mt-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-left">
+                <div className="mt-4 rounded-xl border border-blue-100 bg-[#EEF4FF] px-4 py-3 text-left">
 
                   <div className="flex gap-3">
 
                     <Power
                       size={17}
-                      className="mt-0.5 shrink-0 text-green-600"
+                      className="mt-0.5 shrink-0 text-[#1D55B8]"
                     />
 
-                    <p className="text-xs leading-5 text-green-700">
-                      This room will become available for employees to book again.
+                    <p className="text-xs leading-5 text-[#1D55B8]">
+                      This room will become
+                      available for employees
+                      to book again.
                     </p>
 
                   </div>
@@ -1754,8 +2112,6 @@ export default function AdminRoomsContent() {
               )}
 
             </div>
-
-            {/* Buttons */}
 
             <div className="mt-6 flex gap-3">
 
@@ -1769,7 +2125,22 @@ export default function AdminRoomsContent() {
                     updatingRoomId
                   )
                 }
-                className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="
+                  flex-1
+                  rounded-xl
+                  border
+                  border-[#D5E2F7]
+                  bg-white
+                  px-4
+                  py-3
+                  text-sm
+                  font-bold
+                  text-[#475569]
+                  transition
+                  hover:bg-[#F6F9FF]
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
               >
                 Cancel
               </button>
@@ -1784,12 +2155,20 @@ export default function AdminRoomsContent() {
                     updatingRoomId
                   )
                 }
-                className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  statusConfirmation.action ===
-                  "deactivate"
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-green-600 hover:bg-green-700"
-                }`}
+                className="
+                  flex-1
+                  rounded-xl
+                  bg-[#102D72]
+                  px-4
+                  py-3
+                  text-sm
+                  font-bold
+                  text-white
+                  transition
+                  hover:bg-[#0C245C]
+                  disabled:cursor-not-allowed
+                  disabled:opacity-60
+                "
               >
 
                 {updatingRoomId ? (
@@ -1803,11 +2182,11 @@ export default function AdminRoomsContent() {
                     Please wait...
 
                   </span>
-                ) : statusConfirmation.action ===
-                  "deactivate" ? (
-                  "Deactivate"
                 ) : (
-                  "Activate"
+                  statusConfirmation.action ===
+                  "deactivate"
+                    ? "Deactivate"
+                    : "Activate"
                 )}
 
               </button>
@@ -1819,6 +2198,74 @@ export default function AdminRoomsContent() {
         </div>
       )}
 
+      {/* =================================================
+          ADMIN BOOKING MODAL
+      ================================================= */}
+
+      {bookingRoom && (
+        <BookingModal
+          isOpen={true}
+          roomId={
+            bookingRoom._id
+          }
+          roomName={
+            bookingRoom.name
+          }
+          selectedDate={
+            new Date()
+              .toISOString()
+              .split("T")[0]
+          }
+          onClose={
+            closeBookingModal
+          }
+        />
+      )}
+
     </main>
+  );
+}
+
+/* =====================================================
+   STAT CARD
+===================================================== */
+
+function StatCard({
+  title,
+  value,
+  icon,
+  iconClass,
+}: {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  iconClass: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#D5E2F7] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+
+      <div className="flex items-center gap-3">
+
+        <div
+          className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconClass}`}
+        >
+          {icon}
+        </div>
+
+        <div>
+
+          <p className="text-sm font-semibold text-[#64748B]">
+            {title}
+          </p>
+
+          <p className="mt-1 text-2xl font-bold text-[#10275F]">
+            {value}
+          </p>
+
+        </div>
+
+      </div>
+
+    </div>
   );
 }

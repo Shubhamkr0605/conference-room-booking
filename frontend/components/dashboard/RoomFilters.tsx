@@ -33,7 +33,9 @@ export default function RoomFilters({
 }: RoomFiltersProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
-      {/* Location Filter */}
+      {/* =================================================
+          LOCATION FILTER
+      ================================================= */}
 
       <select
         value={selectedLocation}
@@ -42,7 +44,24 @@ export default function RoomFilters({
             event.target.value
           )
         }
-        className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 outline-none transition focus:border-gray-400"
+        className="
+          rounded-xl
+          border
+          border-[#D5E2F7]
+          bg-white
+          px-4
+          py-2.5
+          text-sm
+          font-medium
+          text-[#10275F]
+          outline-none
+          transition
+          hover:border-[#B8CCEC]
+          focus:border-[#1D55B8]
+          focus:ring-2
+          focus:ring-[#1D55B8]/10
+        "
+        aria-label="Filter by location"
       >
         <option value="All Locations">
           All Locations
@@ -64,7 +83,9 @@ export default function RoomFilters({
           ))}
       </select>
 
-      {/* Room Filter */}
+      {/* =================================================
+          ROOM FILTER
+      ================================================= */}
 
       <select
         value={selectedRoom}
@@ -73,7 +94,24 @@ export default function RoomFilters({
             event.target.value
           )
         }
-        className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 outline-none transition focus:border-gray-400"
+        className="
+          rounded-xl
+          border
+          border-[#D5E2F7]
+          bg-white
+          px-4
+          py-2.5
+          text-sm
+          font-medium
+          text-[#10275F]
+          outline-none
+          transition
+          hover:border-[#B8CCEC]
+          focus:border-[#1D55B8]
+          focus:ring-2
+          focus:ring-[#1D55B8]/10
+        "
+        aria-label="Filter by room"
       >
         <option value="All Rooms">
           All Rooms

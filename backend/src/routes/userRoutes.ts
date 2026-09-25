@@ -5,6 +5,8 @@ import {
   updateMyProfile,
   getAllUsers,
   updateUserRole,
+  updateUserEmail,
+  deleteUser,
 } from "../controllers/userController.js";
 
 import {
@@ -71,6 +73,30 @@ router.patch(
   requireAuth,
   requireRole("ADMIN"),
   updateUserRole
+);
+
+/*
+ * PATCH /api/users/:id/email
+ *
+ * Only ADMIN users can change another user's email.
+ */
+router.patch(
+  "/:id/email",
+  requireAuth,
+  requireRole("ADMIN"),
+  updateUserEmail
+);
+
+/*
+ * DELETE /api/users/:id
+ *
+ * Only ADMIN users can delete another user.
+ */
+router.delete(
+  "/:id",
+  requireAuth,
+  requireRole("ADMIN"),
+  deleteUser
 );
 
 export default router;

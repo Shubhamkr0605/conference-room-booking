@@ -17,8 +17,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html
+      lang="en"
+      className="bg-[#EEF4FF]"
+    >
+      <body
+        className="
+          min-h-screen
+          bg-[#EEF4FF]
+          text-[#10275F]
+          antialiased
+        "
+      >
         <AuthProvider>
           <BookingProvider>
             {children}

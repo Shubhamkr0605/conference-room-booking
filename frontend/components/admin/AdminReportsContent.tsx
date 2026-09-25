@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
 import {
   BarChart3,
   CalendarDays,
@@ -11,12 +12,25 @@ import {
   TrendingUp,
   Users,
   XCircle,
+  MapPin,
+  Building2,
+  Activity,
+  AlertCircle,
 } from "lucide-react";
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
 
-type ReportPeriod = "today" | "week" | "month" | "all";
+/* =====================================================
+   TYPES
+===================================================== */
+
+type ReportPeriod =
+  | "today"
+  | "week"
+  | "month"
+  | "all";
 
 interface Summary {
   totalBookings: number;
@@ -53,12 +67,14 @@ interface RecentBooking {
   startTime: string;
   endTime: string;
   status: string;
+
   user: {
     _id: string;
     name: string;
     email: string;
     department?: string;
   } | null;
+
   room: {
     _id: string;
     name: string;
@@ -68,35 +84,62 @@ interface RecentBooking {
 
 interface ReportResponse {
   success: boolean;
+
   period: ReportPeriod;
+
   dateRange: {
     start: string | null;
     end: string | null;
   };
+
   summary: Summary;
+
   roomUtilization: RoomUtilization[];
+
   employeeActivity: EmployeeActivity[];
+
   dailyBookings: DailyBooking[];
+
   recentBookings: RecentBooking[];
+
+  message?: string;
 }
 
-const periodLabels: Record<ReportPeriod, string> = {
+/* =====================================================
+   CONSTANTS
+===================================================== */
+
+const periodLabels: Record<
+  ReportPeriod,
+  string
+> = {
   today: "Today",
   week: "This Week",
   month: "This Month",
   all: "All Time",
 };
 
+/* =====================================================
+   HELPERS
+===================================================== */
+
 function formatDate(dateString: string) {
-  if (!dateString) return "-";
+  if (!dateString) {
+    return "-";
+  }
 
-  const date = new Date(`${dateString}T00:00:00`);
+  const date = new Date(
+    `${dateString}T00:00:00`
+  );
 
-  return date.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return date.toLocaleDateString(
+    "en-IN",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  );
 }
 
 function formatDateRange(
@@ -107,24 +150,58 @@ function formatDateRange(
     return "All available booking records";
   }
 
-  return `${formatDate(start)} - ${formatDate(end)}`;
+  return `${formatDate(start)} - ${formatDate(
+    end
+  )}`;
 }
 
-function getStatusClasses(status: string) {
-  switch (status) {
-    case "UPCOMING":
-      return "bg-blue-50 text-blue-700";
+function formatTime(timeString: string) {
+  try {
+    const [hours, minutes] =
+      timeString.split(":").map(Number);
 
-    case "COMPLETED":
-      return "bg-green-50 text-green-700";
+    const date = new Date();
 
-    case "CANCELLED":
-      return "bg-red-50 text-red-700";
+    date.setHours(
+      hours,
+      minutes,
+      0,
+      0
+    );
 
-    default:
-      return "bg-gray-100 text-gray-600";
+    return date.toLocaleTimeString(
+      "en-IN",
+      {
+        hour: "numeric",
+        minute: "2-digit",
+      }
+    );
+  } catch {
+    return timeString;
   }
 }
+
+function getStatusClasses(
+  status: string
+) {
+  switch (status) {
+    case "UPCOMING":
+      return "border border-blue-200 bg-[#EEF4FF] text-[#1D55B8]";
+
+    case "COMPLETED":
+      return "border border-slate-200 bg-slate-50 text-slate-600";
+
+    case "CANCELLED":
+      return "border border-red-200 bg-red-50 text-[#E83B32]";
+
+    default:
+      return "border border-slate-200 bg-slate-50 text-slate-600";
+  }
+}
+
+/* =====================================================
+   COMPONENT
+===================================================== */
 
 export default function AdminReportsContent() {
   const [period, setPeriod] =
@@ -133,16 +210,31 @@ export default function AdminReportsContent() {
   const [report, setReport] =
     useState<ReportResponse | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [error, setError] = useState("");
+  const [refreshing, setRefreshing] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  /* =====================================================
+     FETCH REPORTS
+  ===================================================== */
 
   const fetchReports = async (
-    selectedPeriod: ReportPeriod = period
+    selectedPeriod: ReportPeriod = period,
+    isRefresh = false
   ) => {
     try {
-      setLoading(true);
       setError("");
+
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
       const response = await fetch(
         `${API_URL}/api/admin/reports?period=${selectedPeriod}`,
@@ -153,17 +245,29 @@ export default function AdminReportsContent() {
         }
       );
 
-      const data = await response.json();
+      const data: ReportResponse =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to load reports"
+          data.message ||
+            "Failed to load reports"
+        );
+      }
+
+      if (!data.success) {
+        throw new Error(
+          data.message ||
+            "Failed to load reports"
         );
       }
 
       setReport(data);
     } catch (error) {
-      console.error("Reports loading error:", error);
+      console.error(
+        "Reports loading error:",
+        error
+      );
 
       setError(
         error instanceof Error
@@ -172,15 +276,26 @@ export default function AdminReportsContent() {
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  /* =====================================================
+     INITIAL LOAD / PERIOD CHANGE
+  ===================================================== */
 
   useEffect(() => {
     fetchReports(period);
   }, [period]);
 
+  /* =====================================================
+     CHART HELPERS
+  ===================================================== */
+
   const maxDailyBookings = useMemo(() => {
-    if (!report?.dailyBookings.length) {
+    if (
+      !report?.dailyBookings.length
+    ) {
       return 1;
     }
 
@@ -193,7 +308,9 @@ export default function AdminReportsContent() {
   }, [report]);
 
   const maxRoomBookings = useMemo(() => {
-    if (!report?.roomUtilization.length) {
+    if (
+      !report?.roomUtilization.length
+    ) {
       return 1;
     }
 
@@ -205,68 +322,135 @@ export default function AdminReportsContent() {
     );
   }, [report]);
 
+  /* =====================================================
+     LOADING
+  ===================================================== */
+
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+      <main className="min-h-screen bg-[#EEF4FF] p-5 md:p-8 lg:p-10">
+
+        <div className="mb-8">
+
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#E83B32]">
+            Administration
+          </p>
+
+          <h1 className="text-3xl font-bold text-[#10275F] md:text-4xl">
             Reports
           </h1>
 
-          <p className="mt-1 text-sm text-gray-500">
-            View conference room usage and booking activity.
+          <p className="mt-2 text-sm text-[#64748B]">
+            View conference room usage and
+            booking activity.
           </p>
+
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
-          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-gray-200 border-t-gray-900" />
+        <div className="flex min-h-[60vh] items-center justify-center rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
 
-          <p className="mt-4 text-sm text-gray-500">
-            Loading reports...
-          </p>
+          <div className="flex flex-col items-center">
+
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EEF4FF]">
+              <RefreshCw
+                size={28}
+                className="animate-spin text-[#1D55B8]"
+              />
+            </div>
+
+            <p className="mt-4 text-sm font-semibold text-[#64748B]">
+              Loading reports...
+            </p>
+
+          </div>
+
         </div>
-      </div>
+
+      </main>
     );
   }
 
+  /* =====================================================
+     ERROR
+  ===================================================== */
+
   if (error) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+      <main className="min-h-screen bg-[#EEF4FF] p-5 md:p-8 lg:p-10">
+
+        <div className="mb-8">
+
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#E83B32]">
+            Administration
+          </p>
+
+          <h1 className="text-3xl font-bold text-[#10275F] md:text-4xl">
             Reports
           </h1>
 
-          <p className="mt-1 text-sm text-gray-500">
-            View conference room usage and booking activity.
+          <p className="mt-2 text-sm text-[#64748B]">
+            View conference room usage and
+            booking activity.
           </p>
+
         </div>
 
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-          <div className="flex items-start gap-3">
-            <XCircle className="mt-0.5 text-red-600" size={22} />
+        <div className="rounded-2xl border border-red-200 bg-white p-8 shadow-sm">
+
+          <div className="flex flex-col items-start gap-5 sm:flex-row">
+
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50">
+              <AlertCircle
+                size={24}
+                className="text-[#E83B32]"
+              />
+            </div>
 
             <div>
-              <p className="font-semibold text-red-700">
+
+              <p className="text-lg font-bold text-[#10275F]">
                 Unable to load reports
               </p>
 
-              <p className="mt-1 text-sm text-red-600">
+              <p className="mt-1 text-sm leading-6 text-[#64748B]">
                 {error}
               </p>
 
               <button
                 type="button"
-                onClick={() => fetchReports(period)}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                onClick={() =>
+                  fetchReports(
+                    period,
+                    true
+                  )
+                }
+                className="
+                  mt-5
+                  inline-flex
+                  items-center
+                  gap-2
+                  rounded-xl
+                  bg-[#102D72]
+                  px-5
+                  py-3
+                  text-sm
+                  font-bold
+                  text-white
+                  transition
+                  hover:bg-[#0C245C]
+                "
               >
                 <RefreshCw size={16} />
                 Try Again
               </button>
+
             </div>
+
           </div>
+
         </div>
-      </div>
+
+      </main>
     );
   }
 
@@ -274,42 +458,77 @@ export default function AdminReportsContent() {
     return null;
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <BarChart3 size={24} className="text-gray-900" />
+  /* =====================================================
+     UI
+  ===================================================== */
 
-            <h1 className="text-2xl font-bold text-gray-900">
+  return (
+    <main className="min-h-screen w-full bg-[#EEF4FF] p-5 md:p-8 lg:p-10">
+
+      {/* =================================================
+          HEADER
+      ================================================= */}
+
+      <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+
+        <div>
+
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#E83B32]">
+            Administration
+          </p>
+
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#102D72] text-white">
+              <BarChart3 size={22} />
+            </div>
+
+            <h1 className="text-3xl font-bold tracking-tight text-[#10275F] md:text-4xl">
               Reports
             </h1>
+
           </div>
 
-          <p className="mt-1 text-sm text-gray-500">
-            View conference room usage, booking activity,
-            and employee activity.
+          <p className="mt-2 text-sm text-[#64748B]">
+            View conference room usage,
+            booking activity, and employee
+            activity.
           </p>
+
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2">
+        {/* Controls */}
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+
+          {/* Period */}
+
+          <div className="flex items-center gap-3 rounded-xl border border-[#D5E2F7] bg-white px-4 py-2.5 shadow-sm">
+
             <CalendarDays
-              size={17}
-              className="text-gray-400"
+              size={18}
+              className="text-[#1D55B8]"
             />
 
             <select
               value={period}
               onChange={(event) =>
                 setPeriod(
-                  event.target.value as ReportPeriod
+                  event.target
+                    .value as ReportPeriod
                 )
               }
-              className="bg-transparent text-sm font-semibold text-gray-700 outline-none"
+              className="
+                bg-transparent
+                text-sm
+                font-bold
+                text-[#10275F]
+                outline-none
+              "
             >
-              {Object.entries(periodLabels).map(
+              {Object.entries(
+                periodLabels
+              ).map(
                 ([value, label]) => (
                   <option
                     key={value}
@@ -320,397 +539,813 @@ export default function AdminReportsContent() {
                 )
               )}
             </select>
+
           </div>
+
+          {/* Refresh */}
 
           <button
             type="button"
-            onClick={() => fetchReports(period)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            onClick={() =>
+              fetchReports(
+                period,
+                true
+              )
+            }
+            disabled={refreshing}
+            className="
+              inline-flex
+              h-11
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              border
+              border-[#D5E2F7]
+              bg-white
+              px-5
+              text-sm
+              font-bold
+              text-[#10275F]
+              shadow-sm
+              transition
+              hover:border-[#B8CCEC]
+              hover:bg-[#EEF4FF]
+              hover:text-[#1D55B8]
+              disabled:cursor-not-allowed
+              disabled:opacity-60
+            "
           >
-            <RefreshCw size={16} />
-            Refresh
+            <RefreshCw
+              size={16}
+              className={
+                refreshing
+                  ? "animate-spin"
+                  : ""
+              }
+            />
+
+            {refreshing
+              ? "Refreshing..."
+              : "Refresh"}
           </button>
+
         </div>
+
       </div>
 
-      {/* Date range */}
-      <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gray-100 p-2">
-            <Clock3 size={18} className="text-gray-600" />
+      {/* =================================================
+          REPORT PERIOD
+      ================================================= */}
+
+      <div className="mb-6 rounded-2xl border border-[#D5E2F7] bg-white p-5 shadow-sm">
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+              <Clock3 size={19} />
+            </div>
+
+            <div>
+
+              <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#64748B]">
+                Report Period
+              </p>
+
+              <p className="mt-1 text-sm font-bold text-[#10275F]">
+                {periodLabels[
+                  report.period
+                ]}
+              </p>
+
+            </div>
+
           </div>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-              Report Period
+          <div className="rounded-lg bg-[#F6F9FF] px-4 py-2">
+
+            <p className="text-xs font-medium text-[#64748B]">
+              Date Range
             </p>
 
-            <p className="mt-1 text-sm font-semibold text-gray-900">
-              {periodLabels[report.period]}
-            </p>
-
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-0.5 text-sm font-bold text-[#10275F]">
               {formatDateRange(
                 report.dateRange.start,
                 report.dateRange.end
               )}
             </p>
+
           </div>
+
         </div>
+
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* =================================================
+          SUMMARY CARDS
+      ================================================= */}
+
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+
         <SummaryCard
           title="Total Bookings"
-          value={report.summary.totalBookings}
-          icon={<FileText size={21} />}
+          value={
+            report.summary
+              .totalBookings
+          }
+          icon={
+            <FileText size={21} />
+          }
           description="Bookings in selected period"
+          iconClass="bg-[#EEF4FF] text-[#1D55B8]"
         />
 
         <SummaryCard
           title="Upcoming"
-          value={report.summary.upcomingBookings}
-          icon={<Clock3 size={21} />}
+          value={
+            report.summary
+              .upcomingBookings
+          }
+          icon={
+            <Clock3 size={21} />
+          }
           description="Upcoming bookings"
+          iconClass="bg-[#EEF4FF] text-[#1D55B8]"
         />
 
         <SummaryCard
           title="Completed"
-          value={report.summary.completedBookings}
-          icon={<CheckCircle2 size={21} />}
+          value={
+            report.summary
+              .completedBookings
+          }
+          icon={
+            <CheckCircle2
+              size={21}
+            />
+          }
           description="Completed bookings"
+          iconClass="bg-slate-100 text-slate-600"
         />
 
         <SummaryCard
           title="Cancelled"
-          value={report.summary.cancelledBookings}
-          icon={<XCircle size={21} />}
+          value={
+            report.summary
+              .cancelledBookings
+          }
+          icon={
+            <XCircle size={21} />
+          }
           description="Cancelled bookings"
+          iconClass="bg-red-50 text-[#E83B32]"
+          valueClass="text-[#E83B32]"
         />
+
       </div>
 
-      {/* Room utilization */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">
-              Room Utilization
-            </h2>
+      {/* =================================================
+          ROOM UTILIZATION
+      ================================================= */}
 
-            <p className="mt-1 text-sm text-gray-500">
-              Booking activity by conference room.
-            </p>
-          </div>
+      <section className="mt-6 overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
 
-          <TrendingUp
-            size={22}
-            className="text-gray-400"
-          />
-        </div>
+        <div className="border-b border-[#E5ECF7] px-5 py-5">
 
-        {report.roomUtilization.length === 0 ? (
-          <EmptyState message="No room booking data available for this period." />
-        ) : (
-          <div className="mt-6 space-y-5">
-            {report.roomUtilization.map((room) => (
-              <div key={room.roomId}>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {room.roomName}
-                    </p>
+          <div className="flex items-center justify-between gap-4">
 
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      {room.location}
-                    </p>
-                  </div>
+            <div className="flex items-center gap-3">
 
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-gray-900">
-                      {room.bookingCount}
-                    </p>
-
-                    <p className="text-xs text-gray-500">
-                      {room.utilizationPercentage}%
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full bg-gray-900 transition-all"
-                    style={{
-                      width: `${Math.min(
-                        room.utilizationPercentage,
-                        100
-                      )}%`,
-                    }}
-                  />
-                </div>
-
-                <p className="mt-1 text-right text-[11px] text-gray-400">
-                  {Math.round(
-                    (room.bookingCount /
-                      maxRoomBookings) *
-                      100
-                  )}
-                  % relative booking activity
-                </p>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+                <Building2 size={19} />
               </div>
-            ))}
+
+              <div>
+
+                <h2 className="font-bold text-[#10275F]">
+                  Room Utilization
+                </h2>
+
+                <p className="mt-1 text-xs text-[#64748B]">
+                  Booking activity by
+                  conference room.
+                </p>
+
+              </div>
+
+            </div>
+
+            <TrendingUp
+              size={21}
+              className="text-[#1D55B8]"
+            />
+
           </div>
-        )}
-      </section>
 
-      {/* Daily trend */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div>
-          <h2 className="text-lg font-bold text-gray-900">
-            Daily Booking Trend
-          </h2>
-
-          <p className="mt-1 text-sm text-gray-500">
-            Number of bookings recorded for each day.
-          </p>
         </div>
 
-        {report.dailyBookings.length === 0 ? (
-          <EmptyState message="No daily booking data available for this period." />
+        {report.roomUtilization
+          .length === 0 ? (
+
+          <EmptyState message="No room booking data available for this period." />
+
         ) : (
-          <div className="mt-6 space-y-4">
-            {report.dailyBookings.map((item) => {
-              const width =
-                (item.bookingCount /
-                  maxDailyBookings) *
-                100;
 
-              return (
-                <div
-                  key={item.date}
-                  className="grid grid-cols-[90px_1fr_40px] items-center gap-3"
-                >
-                  <span className="text-xs font-medium text-gray-500">
-                    {formatDate(item.date)}
-                  </span>
+          <div className="space-y-6 p-5">
 
-                  <div className="h-7 overflow-hidden rounded-lg bg-gray-100">
-                    <div
-                      className="flex h-full items-center rounded-lg bg-gray-900 px-3 text-xs font-semibold text-white transition-all"
-                      style={{
-                        width: `${Math.max(
-                          width,
-                          item.bookingCount > 0
-                            ? 8
-                            : 0
-                        )}%`,
-                      }}
-                    >
-                      {item.bookingCount > 0 &&
-                        item.bookingCount}
+            {report.roomUtilization.map(
+              (room) => {
+
+                const percentage =
+                  Math.min(
+                    Math.max(
+                      room.utilizationPercentage,
+                      0
+                    ),
+                    100
+                  );
+
+                const relativeActivity =
+                  Math.min(
+                    Math.max(
+                      (room.bookingCount /
+                        maxRoomBookings) *
+                        100,
+                      0
+                    ),
+                    100
+                  );
+
+                return (
+                  <div
+                    key={
+                      room.roomId
+                    }
+                  >
+
+                    <div className="flex items-start justify-between gap-4">
+
+                      <div className="min-w-0">
+
+                        <p className="truncate text-sm font-bold text-[#10275F]">
+                          {room.roomName}
+                        </p>
+
+                        <p className="mt-1 flex items-center gap-1 text-xs text-[#64748B]">
+
+                          <MapPin
+                            size={11}
+                            className="text-[#1D55B8]"
+                          />
+
+                          {room.location}
+
+                        </p>
+
+                      </div>
+
+                      <div className="shrink-0 text-right">
+
+                        <p className="text-sm font-bold text-[#10275F]">
+                          {room.bookingCount}
+                        </p>
+
+                        <p className="text-xs font-semibold text-[#1D55B8]">
+                          {Math.round(
+                            percentage
+                          )}
+                          %
+                        </p>
+
+                      </div>
+
                     </div>
-                  </div>
 
-                  <span className="text-right text-sm font-bold text-gray-900">
-                    {item.bookingCount}
-                  </span>
-                </div>
-              );
-            })}
+                    {/* Utilization */}
+
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#E5ECF7]">
+
+                      <div
+                        className="h-full rounded-full bg-[#1D55B8] transition-all duration-500"
+                        style={{
+                          width: `${percentage}%`,
+                        }}
+                      />
+
+                    </div>
+
+                    <div className="mt-2 flex justify-between">
+
+                      <span className="text-[11px] text-[#94A3B8]">
+                        Utilization
+                      </span>
+
+                      <span className="text-[11px] font-semibold text-[#64748B]">
+                        {Math.round(
+                          relativeActivity
+                        )}
+                        % relative activity
+                      </span>
+
+                    </div>
+
+                  </div>
+                );
+              }
+            )}
+
           </div>
         )}
+
       </section>
 
-      {/* Employee activity */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">
-              Employee Activity
-            </h2>
+      {/* =================================================
+          DAILY BOOKING TREND
+      ================================================= */}
 
-            <p className="mt-1 text-sm text-gray-500">
-              Employees with the most bookings in the
-              selected period.
-            </p>
+      <section className="mt-6 overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
+
+        <div className="border-b border-[#E5ECF7] px-5 py-5">
+
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+              <BarChart3 size={19} />
+            </div>
+
+            <div>
+
+              <h2 className="font-bold text-[#10275F]">
+                Daily Booking Trend
+              </h2>
+
+              <p className="mt-1 text-xs text-[#64748B]">
+                Number of bookings recorded
+                for each day.
+              </p>
+
+            </div>
+
           </div>
 
-          <Users
-            size={22}
-            className="text-gray-400"
-          />
         </div>
 
-        {report.employeeActivity.length === 0 ? (
-          <EmptyState message="No employee booking activity available." />
+        {report.dailyBookings
+          .length === 0 ? (
+
+          <EmptyState message="No daily booking data available for this period." />
+
         ) : (
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full min-w-[600px]">
+
+          <div className="space-y-4 p-5">
+
+            {report.dailyBookings.map(
+              (item) => {
+
+                const width =
+                  (item.bookingCount /
+                    maxDailyBookings) *
+                  100;
+
+                const displayWidth =
+                  item.bookingCount > 0
+                    ? Math.max(width, 8)
+                    : 0;
+
+                return (
+                  <div
+                    key={item.date}
+                    className="
+                      grid
+                      grid-cols-[82px_1fr_42px]
+                      items-center
+                      gap-3
+                      sm:grid-cols-[100px_1fr_45px]
+                    "
+                  >
+
+                    <span className="text-xs font-semibold text-[#64748B]">
+                      {formatDate(
+                        item.date
+                      )}
+                    </span>
+
+                    <div className="h-8 overflow-hidden rounded-lg bg-[#F1F5F9]">
+
+                      <div
+                        className="
+                          flex
+                          h-full
+                          items-center
+                          rounded-lg
+                          bg-[#1D55B8]
+                          px-3
+                          text-xs
+                          font-bold
+                          text-white
+                          transition-all
+                          duration-500
+                        "
+                        style={{
+                          width: `${displayWidth}%`,
+                        }}
+                      >
+                        {item.bookingCount >
+                          0 &&
+                          item.bookingCount}
+                      </div>
+
+                    </div>
+
+                    <span className="text-right text-sm font-bold text-[#10275F]">
+                      {item.bookingCount}
+                    </span>
+
+                  </div>
+                );
+              }
+            )}
+
+          </div>
+        )}
+
+      </section>
+
+      {/* =================================================
+          EMPLOYEE ACTIVITY
+      ================================================= */}
+
+      <section className="mt-6 overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
+
+        <div className="border-b border-[#E5ECF7] px-5 py-5">
+
+          <div className="flex items-center justify-between gap-4">
+
+            <div className="flex items-center gap-3">
+
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+                <Users size={19} />
+              </div>
+
+              <div>
+
+                <h2 className="font-bold text-[#10275F]">
+                  Employee Activity
+                </h2>
+
+                <p className="mt-1 text-xs text-[#64748B]">
+                  Employees with bookings
+                  in the selected period.
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {report.employeeActivity
+          .length === 0 ? (
+
+          <EmptyState message="No employee booking activity available." />
+
+        ) : (
+
+          <div className="overflow-x-auto">
+
+            <table className="w-full min-w-[650px]">
+
               <thead>
-                <tr className="border-b border-gray-100 text-left">
-                  <th className="pb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+
+                <tr className="border-b border-[#E5ECF7] bg-[#F6F9FF] text-left">
+
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                     Employee
                   </th>
 
-                  <th className="pb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                     Department
                   </th>
 
-                  <th className="pb-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  <th className="px-5 py-3 text-right text-xs font-bold uppercase tracking-wide text-[#64748B]">
                     Bookings
                   </th>
+
                 </tr>
+
               </thead>
 
               <tbody>
+
                 {report.employeeActivity.map(
                   (employee) => (
+
                     <tr
-                      key={employee.userId}
-                      className="border-b border-gray-50 last:border-0"
+                      key={
+                        employee.userId
+                      }
+                      className="border-b border-[#E5ECF7] last:border-0 hover:bg-[#F6F9FF]"
                     >
-                      <td className="py-4">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {employee.name}
-                        </p>
 
-                        <p className="mt-0.5 text-xs text-gray-500">
-                          {employee.email}
-                        </p>
+                      <td className="px-5 py-4">
+
+                        <div className="flex items-center gap-3">
+
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#102D72] text-xs font-bold text-white">
+                            {employee.name
+                              .trim()
+                              .split(/\s+/)
+                              .map(
+                                (name) =>
+                                  name[0]
+                              )
+                              .join("")
+                              .slice(
+                                0,
+                                2
+                              )
+                              .toUpperCase()}
+                          </div>
+
+                          <div className="min-w-0">
+
+                            <p className="truncate text-sm font-bold text-[#10275F]">
+                              {employee.name}
+                            </p>
+
+                            <p className="mt-0.5 truncate text-xs text-[#64748B]">
+                              {employee.email}
+                            </p>
+
+                          </div>
+
+                        </div>
+
                       </td>
 
-                      <td className="py-4 text-sm text-gray-600">
-                        {employee.department || "-"}
+                      <td className="px-5 py-4 text-sm font-medium text-[#475569]">
+                        {employee.department ||
+                          "-"}
                       </td>
 
-                      <td className="py-4 text-right">
-                        <span className="inline-flex min-w-10 justify-center rounded-lg bg-gray-100 px-2.5 py-1 text-sm font-bold text-gray-800">
-                          {employee.bookingCount}
+                      <td className="px-5 py-4 text-right">
+
+                        <span className="inline-flex min-w-10 items-center justify-center rounded-lg bg-[#EEF4FF] px-3 py-1.5 text-sm font-bold text-[#1D55B8]">
+                          {
+                            employee.bookingCount
+                          }
                         </span>
+
                       </td>
+
                     </tr>
+
                   )
                 )}
+
               </tbody>
+
             </table>
+
           </div>
         )}
+
       </section>
 
-      {/* Recent bookings */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div>
-          <h2 className="text-lg font-bold text-gray-900">
-            Recent Bookings
-          </h2>
+      {/* =================================================
+          RECENT BOOKINGS
+      ================================================= */}
 
-          <p className="mt-1 text-sm text-gray-500">
-            Latest booking records from the selected
-            period.
-          </p>
+      <section className="mt-6 overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
+
+        <div className="border-b border-[#E5ECF7] px-5 py-5">
+
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+              <FileText size={19} />
+            </div>
+
+            <div>
+
+              <h2 className="font-bold text-[#10275F]">
+                Recent Bookings
+              </h2>
+
+              <p className="mt-1 text-xs text-[#64748B]">
+                Latest booking records from
+                the selected period.
+              </p>
+
+            </div>
+
+          </div>
+
         </div>
 
-        {report.recentBookings.length === 0 ? (
+        {report.recentBookings
+          .length === 0 ? (
+
           <EmptyState message="No bookings available for this period." />
+
         ) : (
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+
+          <div className="overflow-x-auto">
+
+            <table className="w-full min-w-[950px]">
+
               <thead>
-                <tr className="border-b border-gray-100 text-left">
-                  <th className="pb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+
+                <tr className="border-b border-[#E5ECF7] bg-[#F6F9FF] text-left">
+
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                     Booking
                   </th>
 
-                  <th className="pb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                     Employee
                   </th>
 
-                  <th className="pb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                     Room
                   </th>
 
-                  <th className="pb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                     Date
                   </th>
 
-                  <th className="pb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                     Time
                   </th>
 
-                  <th className="pb-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  <th className="px-5 py-3 text-right text-xs font-bold uppercase tracking-wide text-[#64748B]">
                     Status
                   </th>
+
                 </tr>
+
               </thead>
 
               <tbody>
+
                 {report.recentBookings.map(
                   (booking) => (
+
                     <tr
-                      key={booking._id}
-                      className="border-b border-gray-50 last:border-0"
+                      key={
+                        booking._id
+                      }
+                      className="border-b border-[#E5ECF7] last:border-0 hover:bg-[#F6F9FF]"
                     >
-                      <td className="py-4">
-                        <p className="text-sm font-semibold text-gray-900">
+
+                      {/* Booking */}
+
+                      <td className="px-5 py-4">
+
+                        <p className="max-w-[220px] truncate text-sm font-bold text-[#10275F]">
                           {booking.title}
                         </p>
+
                       </td>
 
-                      <td className="py-4">
-                        <p className="text-sm font-medium text-gray-900">
-                          {booking.user?.name || "Unknown"}
+                      {/* Employee */}
+
+                      <td className="px-5 py-4">
+
+                        <p className="text-sm font-semibold text-[#10275F]">
+                          {booking.user
+                            ?.name ||
+                            "Unknown"}
                         </p>
 
-                        <p className="mt-0.5 text-xs text-gray-500">
-                          {booking.user?.email || "-"}
-                        </p>
-                      </td>
-
-                      <td className="py-4">
-                        <p className="text-sm font-medium text-gray-900">
-                          {booking.room?.name || "Unknown"}
+                        <p className="mt-0.5 text-xs text-[#64748B]">
+                          {booking.user
+                            ?.email ||
+                            "-"}
                         </p>
 
-                        <p className="mt-0.5 text-xs text-gray-500">
-                          {booking.room?.location || "-"}
+                      </td>
+
+                      {/* Room */}
+
+                      <td className="px-5 py-4">
+
+                        <p className="flex items-center gap-1.5 text-sm font-semibold text-[#10275F]">
+
+                          <Building2
+                            size={14}
+                            className="text-[#1D55B8]"
+                          />
+
+                          {booking.room
+                            ?.name ||
+                            "Unknown"}
+
                         </p>
+
+                        <p className="mt-1 flex items-center gap-1 text-xs text-[#64748B]">
+
+                          <MapPin
+                            size={11}
+                            className="text-[#1D55B8]"
+                          />
+
+                          {booking.room
+                            ?.location ||
+                            "-"}
+
+                        </p>
+
                       </td>
 
-                      <td className="py-4 text-sm text-gray-600">
-                        {formatDate(booking.date)}
+                      {/* Date */}
+
+                      <td className="px-5 py-4 text-sm font-medium text-[#475569]">
+                        {formatDate(
+                          booking.date
+                        )}
                       </td>
 
-                      <td className="py-4 text-sm text-gray-600">
-                        {booking.startTime} -{" "}
-                        {booking.endTime}
+                      {/* Time */}
+
+                      <td className="px-5 py-4">
+
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-[#475569]">
+
+                          <Clock3
+                            size={14}
+                            className="text-[#1D55B8]"
+                          />
+
+                          {formatTime(
+                            booking.startTime
+                          )}
+
+                          {" - "}
+
+                          {formatTime(
+                            booking.endTime
+                          )}
+
+                        </div>
+
                       </td>
 
-                      <td className="py-4 text-right">
+                      {/* Status */}
+
+                      <td className="px-5 py-4 text-right">
+
                         <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
-                            booking.status
-                          )}`}
+                          className={`
+                            inline-flex
+                            rounded-full
+                            px-3
+                            py-1
+                            text-xs
+                            font-bold
+                            ${getStatusClasses(
+                              booking.status
+                            )}
+                          `}
                         >
                           {booking.status}
                         </span>
+
                       </td>
+
                     </tr>
+
                   )
                 )}
+
               </tbody>
+
             </table>
+
           </div>
         )}
+
       </section>
-    </div>
+
+    </main>
   );
 }
+
+/* =====================================================
+   SUMMARY CARD
+===================================================== */
 
 interface SummaryCardProps {
   title: string;
   value: number;
   description: string;
   icon: React.ReactNode;
+  iconClass: string;
+  valueClass?: string;
 }
 
 function SummaryCard({
@@ -718,33 +1353,47 @@ function SummaryCard({
   value,
   description,
   icon,
+  iconClass,
+  valueClass = "text-[#10275F]",
 }: SummaryCardProps) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-[#D5E2F7] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+
       <div className="flex items-start justify-between">
-        <div className="rounded-xl bg-gray-100 p-2.5">
+
+        <div
+          className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconClass}`}
+        >
           {icon}
         </div>
 
-        <span className="text-xs font-medium text-gray-400">
+        <span className="text-xs font-bold text-[#94A3B8]">
           Report
         </span>
+
       </div>
 
-      <p className="mt-5 text-sm font-medium text-gray-500">
+      <p className="mt-5 text-sm font-semibold text-[#64748B]">
         {title}
       </p>
 
-      <p className="mt-1 text-3xl font-bold text-gray-900">
+      <p
+        className={`mt-1 text-3xl font-bold ${valueClass}`}
+      >
         {value}
       </p>
 
-      <p className="mt-1 text-xs text-gray-400">
+      <p className="mt-1 text-xs text-[#94A3B8]">
         {description}
       </p>
+
     </div>
   );
 }
+
+/* =====================================================
+   EMPTY STATE
+===================================================== */
 
 function EmptyState({
   message,
@@ -752,10 +1401,16 @@ function EmptyState({
   message: string;
 }) {
   return (
-    <div className="mt-6 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center">
-      <p className="text-sm text-gray-500">
+    <div className="m-5 rounded-xl border border-dashed border-[#D5E2F7] bg-[#F6F9FF] p-8 text-center">
+
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#1D55B8] shadow-sm">
+        <BarChart3 size={22} />
+      </div>
+
+      <p className="mt-3 text-sm font-semibold text-[#64748B]">
         {message}
       </p>
+
     </div>
   );
 }

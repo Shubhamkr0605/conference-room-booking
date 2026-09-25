@@ -13,6 +13,7 @@ import {
   MapPin,
   BarChart3,
   AlertCircle,
+  Activity,
 } from "lucide-react";
 
 const API_URL =
@@ -92,9 +93,7 @@ interface DashboardResponse {
    HELPERS
 ===================================================== */
 
-function formatDate(
-  dateString: string
-) {
+function formatDate(dateString: string) {
   const date = new Date(
     `${dateString}T00:00:00`
   );
@@ -107,6 +106,32 @@ function formatDate(
       year: "numeric",
     }
   );
+}
+
+function formatTime(timeString: string) {
+  try {
+    const [hours, minutes] =
+      timeString.split(":").map(Number);
+
+    const date = new Date();
+
+    date.setHours(
+      hours,
+      minutes,
+      0,
+      0
+    );
+
+    return date.toLocaleTimeString(
+      "en-IN",
+      {
+        hour: "numeric",
+        minute: "2-digit",
+      }
+    );
+  } catch {
+    return timeString;
+  }
 }
 
 function formatStatus(
@@ -129,21 +154,15 @@ function formatStatus(
 
 export default function AdminDashboardContent() {
   const [stats, setStats] =
-    useState<DashboardStats | null>(
-      null
-    );
+    useState<DashboardStats | null>(null);
 
   const [recentBookings, setRecentBookings] =
-    useState<DashboardBooking[]>(
-      []
-    );
+    useState<DashboardBooking[]>([]);
 
   const [
     roomUtilization,
     setRoomUtilization,
-  ] = useState<RoomUtilization[]>(
-    []
-  );
+  ] = useState<RoomUtilization[]>([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -154,9 +173,9 @@ export default function AdminDashboardContent() {
   const [error, setError] =
     useState("");
 
-  /* ===================================================
+  /* =====================================================
      FETCH DASHBOARD
-  =================================================== */
+  ===================================================== */
 
   async function fetchDashboard(
     showRefresh = false
@@ -224,63 +243,69 @@ export default function AdminDashboardContent() {
     }
   }
 
-  /* ===================================================
+  /* =====================================================
      INITIAL LOAD
-  =================================================== */
+  ===================================================== */
 
   useEffect(() => {
     fetchDashboard();
   }, []);
 
-  /* ===================================================
+  /* =====================================================
      LOADING
-  =================================================== */
+  ===================================================== */
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6 lg:p-8">
+      <main className="min-h-screen bg-[#EEF4FF] p-5 md:p-8 lg:p-10">
+
         <div className="flex min-h-[70vh] items-center justify-center">
-          <div className="text-center">
 
-            <RefreshCw
-              size={30}
-              className="mx-auto animate-spin text-gray-500"
-            />
+          <div className="flex flex-col items-center">
 
-            <p className="mt-3 text-sm text-gray-500">
-              Loading dashboard...
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-[#D5E2F7]">
+              <RefreshCw
+                size={28}
+                className="animate-spin text-[#1D55B8]"
+              />
+            </div>
+
+            <p className="mt-4 text-sm font-semibold text-[#64748B]">
+              Loading admin dashboard...
             </p>
 
           </div>
+
         </div>
+
       </main>
     );
   }
 
-  /* ===================================================
+  /* =====================================================
      ERROR
-  =================================================== */
+  ===================================================== */
 
   if (error && !stats) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6 lg:p-8">
+      <main className="min-h-screen bg-[#EEF4FF] p-5 md:p-8 lg:p-10">
 
         <div className="flex min-h-[70vh] items-center justify-center">
 
-          <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm">
+          <div className="w-full max-w-md rounded-3xl border border-[#D5E2F7] bg-white p-8 text-center shadow-sm">
 
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
               <AlertCircle
-                size={24}
-                className="text-red-500"
+                size={27}
+                className="text-[#E83B32]"
               />
             </div>
 
-            <h2 className="mt-4 text-lg font-bold text-gray-900">
+            <h2 className="mt-5 text-xl font-bold text-[#10275F]">
               Unable to load dashboard
             </h2>
 
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm leading-6 text-[#64748B]">
               {error}
             </p>
 
@@ -289,7 +314,21 @@ export default function AdminDashboardContent() {
               onClick={() =>
                 fetchDashboard()
               }
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
+              className="
+                mt-6
+                inline-flex
+                items-center
+                gap-2
+                rounded-xl
+                bg-[#102D72]
+                px-5
+                py-3
+                text-sm
+                font-bold
+                text-white
+                transition
+                hover:bg-[#0C245C]
+              "
             >
               <RefreshCw size={16} />
               Try Again
@@ -307,31 +346,32 @@ export default function AdminDashboardContent() {
     return null;
   }
 
-  /* ===================================================
+  /* =====================================================
      UI
-  =================================================== */
+  ===================================================== */
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6 lg:p-8">
+    <main className="min-h-screen w-full bg-[#EEF4FF] p-5 md:p-8 lg:p-10">
 
       {/* =================================================
           HEADER
       ================================================= */}
 
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
 
         <div>
 
-          <p className="text-sm font-medium text-gray-500">
-            Admin Panel
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#E83B32]">
+            Administration
           </p>
 
-          <h1 className="mt-1 text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold tracking-tight text-[#10275F] md:text-4xl">
             Dashboard
           </h1>
 
-          <p className="mt-1 text-sm text-gray-500">
-            Overview of your conference room booking system.
+          <p className="mt-2 text-[#64748B]">
+            Overview of your conference room
+            booking system.
           </p>
 
         </div>
@@ -342,9 +382,29 @@ export default function AdminDashboardContent() {
             fetchDashboard(true)
           }
           disabled={refreshing}
-          className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="
+            inline-flex
+            h-11
+            items-center
+            justify-center
+            gap-2
+            rounded-xl
+            border
+            border-[#D5E2F7]
+            bg-white
+            px-5
+            text-sm
+            font-bold
+            text-[#10275F]
+            shadow-sm
+            transition
+            hover:border-[#B8CCEC]
+            hover:bg-[#EEF4FF]
+            hover:text-[#1D55B8]
+            disabled:cursor-not-allowed
+            disabled:opacity-60
+          "
         >
-
           <RefreshCw
             size={17}
             className={
@@ -357,7 +417,6 @@ export default function AdminDashboardContent() {
           {refreshing
             ? "Refreshing..."
             : "Refresh"}
-
         </button>
 
       </div>
@@ -367,16 +426,26 @@ export default function AdminDashboardContent() {
       ================================================= */}
 
       {error && (
-        <div className="mb-5 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
 
-          <span>{error}</span>
+          <div className="flex items-center gap-2">
+
+            <AlertCircle
+              size={18}
+              className="shrink-0 text-[#E83B32]"
+            />
+
+            <span>{error}</span>
+
+          </div>
 
           <button
             type="button"
             onClick={() =>
               setError("")
             }
-            className="font-bold"
+            className="text-lg font-bold text-[#E83B32] hover:text-[#CF3028]"
+            aria-label="Dismiss error"
           >
             ×
           </button>
@@ -392,29 +461,28 @@ export default function AdminDashboardContent() {
 
         {/* Total Users */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-[#D5E2F7] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
 
           <div className="flex items-start justify-between">
 
             <div>
-              <p className="text-sm text-gray-500">
+
+              <p className="text-sm font-semibold text-[#64748B]">
                 Total Users
               </p>
 
-              <p className="mt-2 text-3xl font-bold text-gray-900">
+              <p className="mt-2 text-3xl font-bold text-[#10275F]">
                 {stats.totalUsers}
               </p>
 
-              <p className="mt-2 text-xs text-gray-400">
+              <p className="mt-2 text-xs text-[#94A3B8]">
                 Registered employees
               </p>
+
             </div>
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
-              <Users
-                size={21}
-                className="text-gray-700"
-              />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+              <Users size={21} />
             </div>
 
           </div>
@@ -423,29 +491,28 @@ export default function AdminDashboardContent() {
 
         {/* Total Rooms */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-[#D5E2F7] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
 
           <div className="flex items-start justify-between">
 
             <div>
-              <p className="text-sm text-gray-500">
+
+              <p className="text-sm font-semibold text-[#64748B]">
                 Total Rooms
               </p>
 
-              <p className="mt-2 text-3xl font-bold text-gray-900">
+              <p className="mt-2 text-3xl font-bold text-[#10275F]">
                 {stats.totalRooms}
               </p>
 
-              <p className="mt-2 text-xs text-gray-400">
+              <p className="mt-2 text-xs text-[#94A3B8]">
                 {stats.activeRooms} currently active
               </p>
+
             </div>
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
-              <Building2
-                size={21}
-                className="text-gray-700"
-              />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+              <Building2 size={21} />
             </div>
 
           </div>
@@ -454,29 +521,28 @@ export default function AdminDashboardContent() {
 
         {/* Total Bookings */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-[#D5E2F7] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
 
           <div className="flex items-start justify-between">
 
             <div>
-              <p className="text-sm text-gray-500">
+
+              <p className="text-sm font-semibold text-[#64748B]">
                 Total Bookings
               </p>
 
-              <p className="mt-2 text-3xl font-bold text-gray-900">
+              <p className="mt-2 text-3xl font-bold text-[#10275F]">
                 {stats.totalBookings}
               </p>
 
-              <p className="mt-2 text-xs text-gray-400">
+              <p className="mt-2 text-xs text-[#94A3B8]">
                 All reservations
               </p>
+
             </div>
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
-              <CalendarDays
-                size={21}
-                className="text-gray-700"
-              />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+              <CalendarDays size={21} />
             </div>
 
           </div>
@@ -485,29 +551,28 @@ export default function AdminDashboardContent() {
 
         {/* Upcoming */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-[#D5E2F7] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
 
           <div className="flex items-start justify-between">
 
             <div>
-              <p className="text-sm text-gray-500">
+
+              <p className="text-sm font-semibold text-[#64748B]">
                 Upcoming
               </p>
 
-              <p className="mt-2 text-3xl font-bold text-gray-900">
+              <p className="mt-2 text-3xl font-bold text-[#1D55B8]">
                 {stats.upcomingBookings}
               </p>
 
-              <p className="mt-2 text-xs text-gray-400">
+              <p className="mt-2 text-xs text-[#94A3B8]">
                 Upcoming reservations
               </p>
+
             </div>
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
-              <Clock3
-                size={21}
-                className="text-gray-700"
-              />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+              <Clock3 size={21} />
             </div>
 
           </div>
@@ -524,25 +589,24 @@ export default function AdminDashboardContent() {
 
         {/* Today */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-[#D5E2F7] bg-white p-5 shadow-sm">
 
           <div className="flex items-center gap-4">
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50">
-              <CalendarDays
-                size={21}
-                className="text-blue-600"
-              />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+              <CalendarDays size={21} />
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">
+
+              <p className="text-sm font-semibold text-[#64748B]">
                 Today's Bookings
               </p>
 
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-[#10275F]">
                 {stats.todayBookings}
               </p>
+
             </div>
 
           </div>
@@ -551,25 +615,24 @@ export default function AdminDashboardContent() {
 
         {/* Completed */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-[#D5E2F7] bg-white p-5 shadow-sm">
 
           <div className="flex items-center gap-4">
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50">
-              <CheckCircle2
-                size={21}
-                className="text-green-600"
-              />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+              <CheckCircle2 size={21} />
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">
+
+              <p className="text-sm font-semibold text-[#64748B]">
                 Completed Bookings
               </p>
 
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-[#10275F]">
                 {stats.completedBookings}
               </p>
+
             </div>
 
           </div>
@@ -578,25 +641,24 @@ export default function AdminDashboardContent() {
 
         {/* Cancelled */}
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-[#D5E2F7] bg-white p-5 shadow-sm">
 
           <div className="flex items-center gap-4">
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50">
-              <XCircle
-                size={21}
-                className="text-red-600"
-              />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-[#E83B32]">
+              <XCircle size={21} />
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">
+
+              <p className="text-sm font-semibold text-[#64748B]">
                 Cancelled Bookings
               </p>
 
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-[#E83B32]">
                 {stats.cancelledBookings}
               </p>
+
             </div>
 
           </div>
@@ -615,27 +677,26 @@ export default function AdminDashboardContent() {
             RECENT BOOKINGS
         ================================================= */}
 
-        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
 
-          <div className="border-b border-gray-100 px-5 py-5">
+          <div className="border-b border-[#E5ECF7] px-5 py-5">
 
             <div className="flex items-center gap-3">
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100">
-                <CalendarDays
-                  size={18}
-                  className="text-gray-700"
-                />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+                <CalendarDays size={19} />
               </div>
 
               <div>
-                <h2 className="font-bold text-gray-900">
+
+                <h2 className="font-bold text-[#10275F]">
                   Recent Bookings
                 </h2>
 
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-[#64748B]">
                   Latest room reservations
                 </p>
+
               </div>
 
             </div>
@@ -647,17 +708,17 @@ export default function AdminDashboardContent() {
 
             <div className="p-10 text-center">
 
-              <CalendarDays
-                size={35}
-                className="mx-auto text-gray-300"
-              />
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EEF4FF] text-[#1D55B8]">
+                <CalendarDays size={28} />
+              </div>
 
-              <p className="mt-3 text-sm font-medium text-gray-600">
+              <p className="mt-4 text-sm font-bold text-[#10275F]">
                 No bookings yet
               </p>
 
-              <p className="mt-1 text-xs text-gray-400">
-                Recent bookings will appear here.
+              <p className="mt-1 text-xs text-[#64748B]">
+                Recent bookings will appear
+                here.
               </p>
 
             </div>
@@ -666,29 +727,29 @@ export default function AdminDashboardContent() {
 
             <div className="overflow-x-auto">
 
-              <table className="w-full min-w-[720px]">
+              <table className="w-full min-w-[760px]">
 
                 <thead>
 
-                  <tr className="border-b border-gray-100 bg-gray-50/70 text-left">
+                  <tr className="border-b border-[#E5ECF7] bg-[#F6F9FF] text-left">
 
-                    <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-gray-500">
+                    <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                       Employee
                     </th>
 
-                    <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-gray-500">
+                    <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                       Room
                     </th>
 
-                    <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-gray-500">
+                    <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                       Date
                     </th>
 
-                    <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-gray-500">
+                    <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                       Time
                     </th>
 
-                    <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-gray-500">
+                    <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#64748B]">
                       Status
                     </th>
 
@@ -704,20 +765,20 @@ export default function AdminDashboardContent() {
                         key={
                           booking._id
                         }
-                        className="border-b border-gray-100 last:border-0"
+                        className="border-b border-[#E5ECF7] last:border-0 hover:bg-[#F6F9FF]"
                       >
 
                         {/* Employee */}
 
                         <td className="px-5 py-4">
 
-                          <p className="text-sm font-semibold text-gray-900">
+                          <p className="text-sm font-semibold text-[#10275F]">
                             {booking.user
                               ?.name ||
                               "Unknown User"}
                           </p>
 
-                          <p className="mt-1 text-xs text-gray-400">
+                          <p className="mt-1 text-xs text-[#64748B]">
                             {booking.user
                               ?.email ||
                               "—"}
@@ -729,7 +790,7 @@ export default function AdminDashboardContent() {
 
                         <td className="px-5 py-4">
 
-                          <p className="text-sm font-semibold text-gray-900">
+                          <p className="text-sm font-semibold text-[#10275F]">
                             {booking.room
                               ?.name ||
                               "Unknown Room"}
@@ -737,12 +798,11 @@ export default function AdminDashboardContent() {
 
                           {booking.room
                             ?.location && (
-                            <div className="mt-1 flex items-center gap-1 text-xs text-gray-400">
+                            <div className="mt-1 flex items-center gap-1 text-xs text-[#64748B]">
 
                               <MapPin
-                                size={
-                                  11
-                                }
+                                size={11}
+                                className="text-[#1D55B8]"
                               />
 
                               {
@@ -758,7 +818,7 @@ export default function AdminDashboardContent() {
 
                         {/* Date */}
 
-                        <td className="px-5 py-4 text-sm text-gray-600">
+                        <td className="px-5 py-4 text-sm font-medium text-[#475569]">
                           {formatDate(
                             booking.date
                           )}
@@ -766,10 +826,27 @@ export default function AdminDashboardContent() {
 
                         {/* Time */}
 
-                        <td className="px-5 py-4 text-sm text-gray-600">
-                          {booking.startTime}
-                          {" - "}
-                          {booking.endTime}
+                        <td className="px-5 py-4 text-sm font-medium text-[#475569]">
+
+                          <div className="flex items-center gap-1.5">
+
+                            <Clock3
+                              size={14}
+                              className="text-[#1D55B8]"
+                            />
+
+                            {formatTime(
+                              booking.startTime
+                            )}
+
+                            {" - "}
+
+                            {formatTime(
+                              booking.endTime
+                            )}
+
+                          </div>
+
                         </td>
 
                         {/* Status */}
@@ -777,15 +854,25 @@ export default function AdminDashboardContent() {
                         <td className="px-5 py-4">
 
                           <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                              booking.status ===
-                              "UPCOMING"
-                                ? "bg-blue-50 text-blue-600"
-                                : booking.status ===
-                                    "COMPLETED"
-                                  ? "bg-green-50 text-green-600"
-                                  : "bg-red-50 text-red-600"
-                            }`}
+                            className={`
+                              inline-flex
+                              items-center
+                              rounded-full
+                              border
+                              px-2.5
+                              py-1
+                              text-[11px]
+                              font-bold
+                              ${
+                                booking.status ===
+                                "UPCOMING"
+                                  ? "border-blue-200 bg-[#EEF4FF] text-[#1D55B8]"
+                                  : booking.status ===
+                                      "COMPLETED"
+                                    ? "border-slate-200 bg-slate-50 text-slate-600"
+                                    : "border-red-200 bg-red-50 text-[#E83B32]"
+                              }
+                            `}
                           >
                             {formatStatus(
                               booking.status
@@ -811,28 +898,36 @@ export default function AdminDashboardContent() {
             ROOM UTILIZATION
         ================================================= */}
 
-        <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-[#D5E2F7] bg-white shadow-sm">
 
-          <div className="border-b border-gray-100 px-5 py-5">
+          <div className="border-b border-[#E5ECF7] px-5 py-5">
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3">
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100">
-                <BarChart3
-                  size={18}
-                  className="text-gray-700"
-                />
+              <div className="flex items-center gap-3">
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FF] text-[#1D55B8]">
+                  <BarChart3 size={19} />
+                </div>
+
+                <div>
+
+                  <h2 className="font-bold text-[#10275F]">
+                    Room Utilization
+                  </h2>
+
+                  <p className="mt-1 text-xs text-[#64748B]">
+                    Bookings by room
+                  </p>
+
+                </div>
+
               </div>
 
-              <div>
-                <h2 className="font-bold text-gray-900">
-                  Room Utilization
-                </h2>
-
-                <p className="mt-1 text-xs text-gray-500">
-                  Bookings by room
-                </p>
-              </div>
+              <Activity
+                size={19}
+                className="text-[#1D55B8]"
+              />
 
             </div>
 
@@ -843,13 +938,17 @@ export default function AdminDashboardContent() {
 
             <div className="p-10 text-center">
 
-              <Building2
-                size={35}
-                className="mx-auto text-gray-300"
-              />
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EEF4FF] text-[#1D55B8]">
+                <Building2 size={28} />
+              </div>
 
-              <p className="mt-3 text-sm font-medium text-gray-600">
+              <p className="mt-4 text-sm font-bold text-[#10275F]">
                 No room data yet
+              </p>
+
+              <p className="mt-1 text-xs text-[#64748B]">
+                Room utilization will appear
+                here.
               </p>
 
             </div>
@@ -860,6 +959,7 @@ export default function AdminDashboardContent() {
 
               {roomUtilization.map(
                 (room) => (
+
                   <div
                     key={
                       room.roomId
@@ -870,40 +970,59 @@ export default function AdminDashboardContent() {
 
                       <div className="min-w-0">
 
-                        <p className="truncate text-sm font-bold text-gray-900">
-                          {
-                            room.roomName
-                          }
+                        <p className="truncate text-sm font-bold text-[#10275F]">
+                          {room.roomName}
                         </p>
 
-                        <p className="mt-1 truncate text-xs text-gray-500">
-                          {
-                            room.location
-                          }
+                        <p className="mt-1 flex items-center gap-1 truncate text-xs text-[#64748B]">
+
+                          <MapPin
+                            size={11}
+                            className="shrink-0 text-[#1D55B8]"
+                          />
+
+                          {room.location}
+
                         </p>
 
                       </div>
 
-                      <span className="shrink-0 text-sm font-bold text-gray-700">
-                        {
-                          room.bookingCount
-                        }
+                      <span className="shrink-0 text-sm font-bold text-[#10275F]">
+                        {room.bookingCount}
                       </span>
 
                     </div>
 
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#E5ECF7]">
 
                       <div
-                        className="h-full rounded-full bg-gray-900 transition-all"
+                        className="h-full rounded-full bg-[#1D55B8] transition-all duration-500"
                         style={{
-                          width: `${room.percentage}%`,
+                          width: `${Math.min(
+                            Math.max(
+                              room.percentage,
+                              0
+                            ),
+                            100
+                          )}%`,
                         }}
                       />
 
                     </div>
 
+                    <div className="mt-1 flex justify-end">
+
+                      <span className="text-[11px] font-semibold text-[#64748B]">
+                        {Math.round(
+                          room.percentage
+                        )}
+                        %
+                      </span>
+
+                    </div>
+
                   </div>
+
                 )
               )}
 

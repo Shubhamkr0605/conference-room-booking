@@ -81,71 +81,124 @@ export default function Sidebar() {
     : employeeMenuItems;
 
   return (
-    <aside className="hidden h-screen w-[263px] shrink-0 flex-col border-r border-gray-200 bg-white lg:flex">
+    <aside
+      className="
+        fixed
+        bottom-0
+        left-0
+        top-[76px]
+        z-40
+        hidden
+        w-[263px]
+        flex-col
+        overflow-hidden
+        border-r
+        border-[#173B86]
+        bg-[#102D72]
+        lg:flex
+      "
+    >
+      {/* =================================================
+          BRAND
+      ================================================= */}
 
-      {/* Logo / Brand */}
-      <div className="flex h-[82px] shrink-0 items-center border-b border-gray-100 px-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-900">
+      <div className="flex h-[98px] shrink-0 items-center border-b border-[#23458C] px-6">
+
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white">
           <Building2
-            size={21}
-            className="text-white"
+            size={24}
+            className="text-[#102D72]"
           />
         </div>
 
-        <div className="ml-3">
-          <h2 className="text-base font-bold text-gray-900">
+        <div className="ml-4 min-w-0">
+
+          <h2 className="text-lg font-bold text-white">
             Conference
           </h2>
 
-          <p className="text-xs text-gray-400">
+          <p className="text-sm text-white/80">
             Room Booking
           </p>
+
         </div>
+
       </div>
 
-      {/* Navigation */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      {/* =================================================
+          NAVIGATION
+          ONLY THIS SECTION CAN SCROLL
+      ================================================= */}
 
-        <p className="mb-3 px-3 text-xs font-bold uppercase tracking-[0.15em] text-gray-400">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
+
+        <p className="mb-4 px-3 text-xs font-bold uppercase tracking-[0.2em] text-white/80">
           {isAdmin ? "Admin Menu" : "Menu"}
         </p>
 
-        <nav className="space-y-1">
+        <nav className="space-y-2">
+
           {menuItems.map((item) => {
             const Icon = item.icon;
 
             const isActive =
               pathname === item.href ||
-              (item.href !== "/dashboard" &&
+              (
+                item.href !== "/dashboard" &&
                 item.href !== "/admin" &&
                 pathname.startsWith(
                   `${item.href}/`
-                ));
+                )
+              );
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${
-                  isActive
-                    ? "bg-rose-100 text-rose-600"
-                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+                className={`
+                  flex
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-3
+                  text-sm
+                  font-semibold
+                  transition-all
+                  duration-200
+                  ${
+                    isActive
+                      ? "bg-[#1D55B8] text-white shadow-sm"
+                      : "text-white hover:bg-[#17438F]"
+                  }
+                `}
               >
-                <Icon size={20} />
+                <Icon
+                  size={20}
+                  className="shrink-0 text-white"
+                />
 
-                <span>{item.label}</span>
+                <span className="text-white">
+                  {item.label}
+                </span>
+
               </Link>
             );
           })}
+
         </nav>
+
       </div>
 
-      {/* User */}
-      <div className="shrink-0 border-t border-gray-100 p-4">
-        <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
+      {/* =================================================
+          USER — ALWAYS AT BOTTOM OF SCREEN
+      ================================================= */}
 
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-rose-100 text-sm font-bold text-rose-600">
+      <div className="shrink-0 border-t border-[#23458C] bg-[#102D72] p-4">
+
+        <div className="flex items-center gap-3 rounded-xl bg-[#0C245C] p-3">
+
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-[#102D72]">
             {user?.name
               ?.trim()
               .split(/\s+/)
@@ -156,16 +209,21 @@ export default function Sidebar() {
           </div>
 
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-gray-900">
+
+            <p className="truncate text-sm font-bold text-white">
               {user?.name || "User"}
             </p>
 
-            <p className="truncate text-xs text-gray-500">
-              {isAdmin ? "Administrator" : "Employee"}
+            <p className="truncate text-xs text-white/80">
+              {isAdmin
+                ? "Administrator"
+                : "Employee"}
             </p>
+
           </div>
 
         </div>
+
       </div>
 
     </aside>
